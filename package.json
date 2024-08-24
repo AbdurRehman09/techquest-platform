@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+     "prisma:db:push": "prisma db push",
+    "prisma:migrate:dev": "prisma migrate dev"
+
   },
   "dependencies": {
     "next": "14.2.5",
