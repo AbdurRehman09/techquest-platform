@@ -10,9 +10,46 @@ model User {
   id        Int      @id @default(autoincrement())
   email     String   @unique
   name      String?
+  password  String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-   @@map("users")
+
+  quizzes   Quiz[]   @relation("UserQuizzes")
+
+  @@map("users")
 }
 
+model Subject {
+  id   Int    @id @default(autoincrement())
+  name String @unique
 
+  topics   Topic[]
+  quizzes  Quiz[]
+
+  @@map("subjects")
+}
+
+model Topic {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  subjectId Int
+
+  subject   Subject  @relation(fields: [subjectId], references: [id])
+  quizzes   Quiz[]
+
+  @@map("topics")
+}
+
+model Quiz {
+  id          Int      @id @default(autoincrement())
+  quizOwnedBy Int
+  duration    Int
+  subjectId   Int
+  topicId     Int
+
+  owner   User    @relation("UserQuizzes", fields: [quizOwnedBy], references: [id])
+  subject Subject @relation(fields: [subjectId], references: [id])
+  topic   Topic   @relation(fields: [topicId], references: [id])
+
+  @@map("quizzes")
+}
