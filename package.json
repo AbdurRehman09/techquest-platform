@@ -7,11 +7,12 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-     "prisma:db:push": "prisma db push",
+    "prisma:db:push": "prisma db push",
     "prisma:migrate:dev": "prisma migrate dev"
-
   },
   "dependencies": {
+    "@monaco-editor/react": "^4.6.0",
+    "axios": "^1.7.7",
     "next": "14.2.5",
     "react": "^18",
     "react-dom": "^18"
