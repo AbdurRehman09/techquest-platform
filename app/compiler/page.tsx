@@ -9,9 +9,7 @@ const Compiler = () => {
     using namespace std;
     
     int main() {
-        int number;
-        cin >> number;
-        cout << "Your number is: " << number << endl;
+        cout << "hello world!"<< endl;
         return 0;
     }
   `);
