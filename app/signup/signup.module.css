@@ -8,7 +8,11 @@
     flex: 1;
     position: relative;
   }
-  
+  .rowclass{
+    display: flex;
+    justify-content: space-between;
+    max-width:300px ;
+  }
   .formWrapper {
     flex: 1;
     display: flex;
@@ -25,6 +29,10 @@
   
   .googleButton {
     margin-bottom: 1rem;
+    max-width: 350px;
+    height: 50px;
+    display: flex;
+    margin: auto;
   }
   
   .divider {
@@ -33,17 +41,19 @@
   }
   
   .form {
-    max-width: 400px;
-    margin: 0 auto;
+    max-width: 300px;
+    margin:auto;
   }
   
   .submitButton {
-    background-color: #001529;
     color: white;
   }
   
   .loginPrompt {
     text-align: center;
     margin-top: 1rem;
+  }
+  .input{
+    background-color:#c5e4f0 !important;
   }
   

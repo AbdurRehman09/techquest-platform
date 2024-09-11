@@ -1,143 +1,101 @@
-// app/signup/page.tsx
 'use client';
 
+
 import React from 'react';
-import { Form, Input, Button, Checkbox, Radio } from 'antd';
+import {Button,Checkbox,Flex,Radio,Space ,theme} from 'antd';
+import { Form,Input } from 'antd';
 import { GoogleOutlined } from '@ant-design/icons';
 import Image from 'next/image';
 import img from './signUp.jpg'
-import styled from 'styled-components';
-
-const SignUpContainer = styled.div`
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
-  background-color: #f5f5f5;
-
-  .form-container {
-    display: flex;
-    background-color: white;
-    padding: 30px;
-    border-radius: 8px;
-    box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
-  }
-
-  .image-container {
-    flex: 1;
-    padding: 20px;
-  }
-
-  .form-fields {
-    flex: 1;
-    padding: 20px;
-  }
-
-  .form-title {
-    font-size: 24px;
-    text-align: center;
-    margin-bottom: 20px;
-  }
-
-  .google-btn {
-    width: 100%;
-    background-color: #4285f4;
-    color: white;
-    margin-bottom: 20px;
-  }
-
-  .submit-btn {
-    width: 100%;
-    background-color: #001529;
-    color: white;
-    margin-top: 20px;
-  }
-
-  .login-link {
-    margin-top: 10px;
-    text-align: center;
-  }
-`;
-
+import styles from './signup.module.css';
 const SignUpPage: React.FC = () => {
-  const onFinish = (values: any) => {
-    console.log('Success:', values);
-  };
-
-  const onFinishFailed = (errorInfo: any) => {
-    console.log('Failed:', errorInfo);
-  };
-
   return (
-    <SignUpContainer>
-      <div className="form-container">
-        {/* Left Side Image */}
-        <div className="image-container">
-          <Image
-            src={img} // You need to replace this with your actual image path
-            alt="Sign Up Illustration"
-            width={400}
-            height={500}
-            style={{ borderRadius: '8px' }}
-          />
-        </div>
-
-        {/* Right Side Form */}
-        <div className="form-fields">
-          <div className="form-title">SignUp</div>
-          <Button
-            icon={<GoogleOutlined />}
-            className="google-btn"
+    <div className={styles.container}>
+      <div className={styles.imageWrapper}>
+        <Image
+          src={img} // Replace this with your image path
+          alt="Signup Illustration"
+          fill
+          className="object-cover"
+        />
+      </div>
+      <div className={styles.formWrapper}>
+        <h1 className={styles.title}>SignUp</h1>
+        <Button icon={<GoogleOutlined />} type="primary" block className={styles.googleButton}>
+          Continue with Google
+        </Button>
+        <div className={styles.divider}>----------------or email----------------</div>
+        <Form
+          name="basic"
+          layout="vertical"
+          className={styles.form}
+        >
+          <div className={styles.rowclass}>
+          <Form.Item
+            name="firstName"
+            label="First Name"
+            rules={[{ required: true, message: 'Please input your first name!' }]}
           >
-            Continue with Google
-          </Button>
-          <Form
-            name="basic"
-            layout="vertical"
-            initialValues={{ remember: true }}
-            onFinish={onFinish}
-            onFinishFailed={onFinishFailed}
+            <Input placeholder="First Name" className={styles.input} />
+          </Form.Item>
+          <Form.Item
+            name="lastName"
+            label="Last Name"
+            rules={[{ required: true, message: 'Please input your last name!' }]}
           >
-            <Form.Item label="First Name" name="firstName" rules={[{ required: true, message: 'Please input your first name!' }]}>
-              <Input placeholder="First Name" />
-            </Form.Item>
-            <Form.Item label="Last Name" name="lastName" rules={[{ required: true, message: 'Please input your last name!' }]}>
-              <Input placeholder="Last Name" />
-            </Form.Item>
-            <Form.Item label="Email" name="email" rules={[{ required: true, message: 'Please input your email!' }]}>
-              <Input type="email" placeholder="user@email.com" />
-            </Form.Item>
-            <Form.Item label="Username" name="username" rules={[{ required: true, message: 'Please input your username!' }]}>
-              <Input placeholder="user123" />
-            </Form.Item>
-            <Form.Item label="Password" name="password" rules={[{ required: true, message: 'Please input your password!' }]}>
-              <Input.Password placeholder="******" />
-            </Form.Item>
+            <Input placeholder="Last Name" className={styles.input} style={{marginLeft:"10px"}} />
+          </Form.Item>
+          
+          </div>
+          <Form.Item
+            name="email"
+            label="Email"
+            rules={[{ required: true, message: 'Please input your email!' }]}
+          >
+            <Input type="email" placeholder="user@email.com" className={styles.input} />
+          </Form.Item>
 
-            <Form.Item>
-              <Radio.Group>
-                <Radio value="teacher">Teacher</Radio>
-                <Radio value="student">Student</Radio>
-              </Radio.Group>
-            </Form.Item>
+          <Form.Item
+            name="username"
+            label="Username"
+            rules={[{ required: true, message: 'Please input your username!' }]}
+          >
+            <Input placeholder="user123" className={styles.input} />
+          </Form.Item>
 
-            <Form.Item name="terms" valuePropName="checked" rules={[{ required: true, message: 'Please accept the terms!' }]}>
-              <Checkbox>I agree with TechQuest Terms of Service</Checkbox>
-            </Form.Item>
-
-            <Form.Item>
-              <Button type="primary" htmlType="submit" className="submit-btn">
-                SignUp
-              </Button>
-            </Form.Item>
-
-            <div className="login-link">
-              Already have an account? <a href="/login">Log In</a>
-            </div>
-          </Form>
+          <Form.Item
+            name="password"
+            label="Password"
+            rules={[{ required: true, message: 'Please input your password!' }]}
+          >
+            <Input.Password placeholder="Password" className={styles.input} />
+          </Form.Item>
+          <Form.Item  name="role" label="Check valid option" rules={[{ required: true }]}>
+            <Radio.Group>
+              <Radio value="teacher">Teacher</Radio>
+              <Radio value="student">Student</Radio>
+            </Radio.Group>
+          </Form.Item>
+          <Form.Item 
+            name="agreement"
+            valuePropName="checked"
+            rules={[{ required: true, message: 'You must agree to the terms!' }]}
+          >
+            <Checkbox>
+              I agree with TechQuest <a href="#">Terms of Service</a>
+            </Checkbox>
+          </Form.Item>
+          <Form.Item>
+            <Button type="primary" htmlType="submit" block className={styles.submitButton}>
+              Sign Up
+            </Button>
+          </Form.Item>
+        </Form>
+        <div className={styles.loginPrompt} >
+          Already have an account? <a href="/login">LogIn</a>
         </div>
       </div>
-    </SignUpContainer>
+    </div>
   );
 };
 
