@@ -70,21 +70,25 @@ const SignUpPage: React.FC = () => {
           >
             <Input.Password placeholder="Password" className={styles.input} />
           </Form.Item>
-          <Form.Item  name="role" label="Check valid option" rules={[{ required: true }]}>
+          <Form.Item className={styles.checkbox} name="role" label="Check valid option" rules={[{ required: true }]}>
             <Radio.Group>
               <Radio value="teacher">Teacher</Radio>
               <Radio value="student">Student</Radio>
             </Radio.Group>
           </Form.Item>
+        
+          <Space size="small">
           <Form.Item 
             name="agreement"
             valuePropName="checked"
             rules={[{ required: true, message: 'You must agree to the terms!' }]}
           >
+            
             <Checkbox>
               I agree with TechQuest <a href="#">Terms of Service</a>
             </Checkbox>
           </Form.Item>
+          </Space>
           <Form.Item>
             <Button type="primary" htmlType="submit" block className={styles.submitButton}>
               Sign Up

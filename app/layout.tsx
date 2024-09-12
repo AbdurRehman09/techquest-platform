@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./themes/globals.css"
 import { ConfigProvider } from "antd";
 import theme from "./themes/theme.config";
+import ClientLayout from './Components/ClientLayout/page';
 
 
 const inter = Inter({ subsets: ["latin"] });
@@ -17,11 +18,16 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  
   return (
     <html lang="en">
-      <ConfigProvider theme={theme}>
-      <body className={inter.className}>{children}</body>
-      </ConfigProvider>
+      <body className={inter.className}>
+        <ConfigProvider theme={theme}>
+              <ClientLayout>
+              {children}
+            </ClientLayout>
+        </ConfigProvider>
+      </body>
     </html>
   );
 }
