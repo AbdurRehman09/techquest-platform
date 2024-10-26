@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { Card, Button, Radio, Space, Typography } from 'antd';
 import { ArrowLeftOutlined, ArrowRightOutlined } from '@ant-design/icons';
+import AssignQuizModal from '../AssignQuiz/page'; // Import the AssignQuizModal component
 
 const { Title, Paragraph } = Typography;
 
@@ -154,7 +155,13 @@ const TechQuestPortal = () => {
             case 'quizzes':
                 return <Title level={3}>Quizzes Content</Title>;
             case 'assigned':
-                return <Title level={3}>Assigned Content</Title>;
+                return (
+                    <>
+                        <Title level={3}>Assigned Content</Title>
+                        {/* Render the AssignQuizModal component here */}
+                        <AssignQuizModal />
+                    </>
+                );
             default:
                 return null;
         }

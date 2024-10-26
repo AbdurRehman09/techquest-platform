@@ -81,5 +81,20 @@ model Question {
 
   subject Subject @relation(fields: [subjectId], references: [id])
 
+  explanations QuestionExplanation[]  // Add relation to explanations
+
   @@map("questions")
+}
+
+// New QuestionExplanation model
+model QuestionExplanation {
+  id          Int      @id @default(autoincrement())
+  questionId  Int
+  feedback    String   // AI feedback about the user's code   // Explanation of the best approach to the question
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  question Question @relation(fields: [questionId], references: [id])
+
+  @@map("question_explanations")
 }
