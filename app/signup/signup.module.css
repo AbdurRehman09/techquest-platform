@@ -1,0 +1,58 @@
+/* app/signup/signup.module.css */
+.container {
+    display: flex;
+    min-height: 100vh;
+  }
+  
+  .imageWrapper {
+    flex: 1.5;
+    position: relative;
+  }
+  .rowclass{
+    display: flex;
+    justify-content: space-between;
+    max-width:300px ;
+  }
+  .formWrapper {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 2rem;
+  }
+  .title {
+    text-align: center;
+    font-size: 2rem;
+    margin-bottom: 1rem;
+  }
+  
+  .googleButton {
+    margin-bottom: 1rem;
+    max-width: 350px;
+    height: 50px;
+    display: flex;
+    margin: auto;
+  }
+  
+  .divider {
+    text-align: center;
+    margin: 1rem 0;
+  }
+  
+  .form {
+    max-width: 300px;
+    margin:auto;
+  }
+  
+  .submitButton {
+    color: white;
+  }
+  
+  .loginPrompt {
+    text-align: center;
+    margin-top: 1rem;
+  }
+  .input{
+    background-color:#c5e4f0 !important;
+  }
+  
