@@ -6,6 +6,7 @@ datasource db {
 generator client {
   provider = "prisma-client-js"
 }
+
 model User {
   id        Int      @id @default(autoincrement())
   email     String   @unique
@@ -14,17 +15,20 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  quizzes   Quiz[]   @relation("UserQuizzes")
+  quizzes         Quiz[]          @relation("UserQuizzes")
+  customQuestions CustomQuestion[]
 
   @@map("users")
 }
 
 model Subject {
-  id   Int    @id @default(autoincrement())
-  name String @unique
+  id      Int      @id @default(autoincrement())
+  name    String   @unique
 
-  topics   Topic[]
-  quizzes  Quiz[]
+  topics     Topic[]
+  quizzes    Quiz[]
+  questions  Question[]
+  customQuestions CustomQuestion[]
 
   @@map("subjects")
 }
@@ -52,4 +56,45 @@ model Quiz {
   topic   Topic   @relation(fields: [topicId], references: [id])
 
   @@map("quizzes")
+}
+
+// New CustomQuestion model
+model CustomQuestion {
+  id          Int      @id @default(autoincrement())
+  description String
+  subjectId   Int
+  authorId    Int
+
+  subject Subject @relation(fields: [subjectId], references: [id])
+  author  User    @relation(fields: [authorId], references: [id])
+
+  @@map("custom_questions")
+}
+
+// New Question model
+model Question {
+  id          Int      @id @default(autoincrement())
+  uuid        String   @unique
+  description String
+  difficulty  String
+  subjectId   Int
+
+  subject Subject @relation(fields: [subjectId], references: [id])
+
+  explanations QuestionExplanation[]  // Add relation to explanations
+
+  @@map("questions")
+}
+
+// New QuestionExplanation model
+model QuestionExplanation {
+  id          Int      @id @default(autoincrement())
+  questionId  Int
+  feedback    String   // AI feedback about the user's code   // Explanation of the best approach to the question
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  question Question @relation(fields: [questionId], references: [id])
+
+  @@map("question_explanations")
 }
