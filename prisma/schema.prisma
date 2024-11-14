@@ -7,11 +7,19 @@ generator client {
   provider = "prisma-client-js"
 }
 
+// Add this enum before the User model
+enum UserRole {
+  ADMIN
+  STUDENT
+  TEACHER
+}
+
 model User {
   id        Int      @id @default(autoincrement())
   email     String   @unique
   name      String?
   password  String
+  role      UserRole @default(STUDENT)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
