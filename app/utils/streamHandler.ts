@@ -1,0 +1,329 @@
+export interface IOStream {
+
+
+
+
+
+
+
+    buffer: string[];
+
+
+
+
+
+
+
+    position: number;
+
+
+
+
+
+
+
+  }
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+  export class CPPStreamHandler {
+
+
+
+
+
+
+
+    private inputBuffer: string[] = [];
+
+
+
+
+
+
+
+    private outputBuffer: string[] = [];
+
+
+
+
+
+
+
+    private currentInputPosition: number = 0;
+
+
+
+
+
+
+
+
+
+
+
+    constructor() {
+
+
+
+
+
+
+
+      this.reset();
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+    reset() {
+
+
+
+
+
+
+
+      this.inputBuffer = [];
+
+
+
+
+
+
+
+      this.outputBuffer = [];
+
+
+
+
+
+
+
+      this.currentInputPosition = 0;
+
+
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+    isWaitingForInput(): boolean {
+
+
+
+
+
+
+
+      const lastOutput = this.outputBuffer[this.outputBuffer.length - 1];
+
+
+
+
+
+
+
+      // Check if the last output is a prompt (ends with : or ? without newline)
+
+
+
+      return Boolean(lastOutput?.includes("Enter") || lastOutput?.includes("?"));
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+    pushInput(input: string) {
+
+
+
+
+
+
+
+      this.inputBuffer.push(input);
+
+
+
+
+
+
+
+
+
+
+
+      this.currentInputPosition++;
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+    pushOutput(output: string) {
+
+
+
+
+
+
+
+      // Split by newlines first
+
+
+
+      const lines = output.split('\n');
+
+
+
+
+
+
+
+      lines.forEach(line => {
+
+        const trimmedLine = line.trim();
+
+        if (trimmedLine) {
+
+          this.outputBuffer.push(trimmedLine);
+
+        }
+
+      });
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+    getFormattedOutput(): string[] {
+
+      return this.outputBuffer;
+
+    }
+
+
+
+    getCurrentInput(): string {
+
+      return this.inputBuffer[this.currentInputPosition - 1] || '';
+
+    }
+
+    getAllInputs(): string {
+
+      return this.inputBuffer.join('\n');
+
+    }
+
+  }
+
+
+
+
+
+
