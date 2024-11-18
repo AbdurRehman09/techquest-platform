@@ -1,14 +1,14 @@
 'use client'
 import React, { useState } from 'react';
-import { Typography, Button, Card, Row, Col } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
+import { Typography, Button, Card, Row, Col, Modal } from 'antd';
+import { PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined } from '@ant-design/icons';
+import ShowDetails from '../ShowDetails/page';
 
 const { Title, Text } = Typography;
 
 interface Quiz {
   id: number;
   name: string;
-  students: number;
   teacherName: string;
   duration: string;
 }
@@ -22,11 +22,13 @@ const QuizzesList: React.FC<QuizzesListProps> = ({ showCreateButton = true }) =>
     {
       id: 1,
       name: 'Quiz No1',
-      students: 4,
       teacherName: '21a61b23',
       duration: '30 mins',
     },
   ]);
+
+  const [selectedQuizId, setSelectedQuizId] = useState<number | null>(null);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
 
   const handleCreateQuiz = () => {
     console.log('Create new quiz');
@@ -42,6 +44,11 @@ const QuizzesList: React.FC<QuizzesListProps> = ({ showCreateButton = true }) =>
 
   const handleDeleteQuiz = (quizId: number) => {
     console.log('Delete quiz', quizId);
+  };
+
+  const handleShowDetails = (quizId: number) => {
+    setSelectedQuizId(quizId);
+    setShowDetailsModal(true);
   };
 
   return (
@@ -66,30 +73,58 @@ const QuizzesList: React.FC<QuizzesListProps> = ({ showCreateButton = true }) =>
               </Title>
             </Col>
             <Col>
-              <Button style={{backgroundColor:"#c5e4f0"}} onClick={() => handleAssignQuiz(quiz.id)} className="mr-2">
+              <Button 
+                style={{backgroundColor:"#c5e4f0"}} 
+                icon={<EyeOutlined />} 
+                onClick={() => handleShowDetails(quiz.id)} 
+                className="mr-2"
+              >
+                Show Details
+              </Button>
+              <Button 
+                style={{backgroundColor:"#c5e4f0"}} 
+                onClick={() => handleAssignQuiz(quiz.id)} 
+                className="mr-2"
+              >
                 Assign
               </Button>
-              <Button style={{backgroundColor:"#c5e4f0"}} icon={<EditOutlined />} onClick={() => handleEditQuiz(quiz.id)} className="mr-2">
+              <Button 
+                style={{backgroundColor:"#c5e4f0"}} 
+                icon={<EditOutlined />} 
+                onClick={() => handleEditQuiz(quiz.id)} 
+                className="mr-2"
+              >
                 Edit
               </Button>
-              <Button className='text-white bg-red-500' icon={<DeleteOutlined />} onClick={() => handleDeleteQuiz(quiz.id)}>
+              <Button 
+                className='text-white bg-red-500' 
+                icon={<DeleteOutlined />} 
+                onClick={() => handleDeleteQuiz(quiz.id)}
+              >
                 Delete
               </Button>
             </Col>
           </Row>
           <Row className="mt-2 flex-col">
-            <Col span={8}>
-              <Text>No of Students: {quiz.students}</Text>
-            </Col>
-            <Col span={8}>
+            <Col span={12}>
               <Text>Teacher's Name: {quiz.teacherName}</Text>
             </Col>
-            <Col span={8}>
+            <Col span={12}>
               <Text>Duration: {quiz.duration}</Text>
             </Col>
           </Row>
         </Card>
       ))}
+
+      <Modal
+        title="Quiz Details"
+        open={showDetailsModal}
+        onCancel={() => setShowDetailsModal(false)}
+        width={800}
+        footer={null}
+      >
+        {selectedQuizId && <ShowDetails quizId={selectedQuizId} />}
+      </Modal>
     </>
   );
 };

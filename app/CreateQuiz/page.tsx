@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { Layout, Typography, Select, Input, Slider, Button, Space, Radio, List, Switch, InputNumber, message, App } from 'antd';
 import { gql, useQuery, useMutation } from '@apollo/client';
+import { useRouter } from 'next/navigation';
 
 const { Content } = Layout;
 const { Title } = Typography;
@@ -46,6 +47,8 @@ const CreateQuiz = () => {
     const [totalTime, setTotalTime] = useState(30);
     const [timerType, setTimerType] = useState('perQuestion');
 
+    const router = useRouter();
+
     // GraphQL hooks
     const { data: topicsData, loading: topicsLoading } = useQuery(GET_TOPICS, {
         variables: { subjectId: 1 }, // Hardcoded subjectId as requested
@@ -61,6 +64,7 @@ const CreateQuiz = () => {
             } else {
                 message.success(`Quiz created successfully!`);
             }
+            router.push(`/quiz-details/${data.createQuiz.id}`);
         },
         onError: (error) => {
             console.error('GraphQL Error:', error);
@@ -78,18 +82,22 @@ const CreateQuiz = () => {
             ? timePerQuestion * numQuestions
             : totalTime;
 
+        const quizData = {
+            topicId: selectedTopic,
+            name: quizName,
+            difficulty,
+            duration,
+            numberOfQuestions: numQuestions,
+            yearStart: yearRange[0],
+            yearEnd: yearRange[1]
+        };
+
+        console.log('Quiz Data being sent to database:', quizData);
+
         try {
             const response = await createQuiz({
                 variables: {
-                    input: {
-                        topicId: selectedTopic,
-                        name: quizName,
-                        difficulty,
-                        duration,
-                        numberOfQuestions: numQuestions,
-                        yearStart: yearRange[0],
-                        yearEnd: yearRange[1]
-                    }
+                    input: quizData
                 }
             });
             console.log('Quiz created:', response.data);
