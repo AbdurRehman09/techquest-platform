@@ -1,4 +1,4 @@
-import { Providers } from './providers'
+import { Providers } from './providers/providers'
 import { ConfigProvider } from "antd"
 import themeConfig from "./themes/theme.config"
 import './themes/globals.css'
