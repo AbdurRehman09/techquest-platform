@@ -62,37 +62,18 @@ export const typeDefs = gql`
   type Quiz {
     id: Int!
     duration: Int!
-    numberOfQuestions: Int!
-    yearStart: Int!
-    yearEnd: Int!
     subject: Subject!
     topic: Topic!
     owner: User!
-    questions: [Question!]!
-  }
-
-  input CreateQuizInput {
-    topicId: Int!
-    difficulty: String!
-    duration: Int!
-    numberOfQuestions: Int!
-    yearStart: Int!
-    yearEnd: Int!
-    name: String!
   }
 
   type Query {
     subjects: [Subject!]!
     topics(subjectId: Int!): [Topic!]!
-    topicsBySubject(subjectId: Int!): [Topic!]!
     questions(subjectId: Int!, difficulty: String): [Question!]!
     questionsByTopic(topicId: Int!): [Question!]!
     customQuestions(subjectId: Int): [CustomQuestion!]!
     questionExplanations(questionId: Int!): [QuestionExplanation!]!
     generateQuiz(topicId: Int!, duration: Int!): Quiz!
-  }
-
-  type Mutation {
-    createQuiz(input: CreateQuizInput!): Quiz!
   }
 ` 

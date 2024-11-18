@@ -1,10 +1,10 @@
-import { PrismaClient, Prisma, Question, Quiz } from '@prisma/client'
+import { PrismaClient } from '@prisma/client'
 
 interface Context {
   prisma: PrismaClient
 }
 
-// Add all missing interfaces
+// Define types for resolver arguments
 interface TopicsArgs {
   subjectId: number
 }
@@ -25,37 +25,9 @@ interface QuestionExplanationsArgs {
 interface GenerateQuizArgs {
   topicId: number
   duration: number
-  yearStart: number
-  yearEnd: number
-}
-
-interface CreateQuizInput {
-  topicId: number
-  difficulty: string
-  duration: number
-  numberOfQuestions: number
-  yearStart: number
-  yearEnd: number
-  name: string
-}
-
-interface QuizCreateData extends Prisma.QuizCreateInput {
-  numberOfQuestions: number
-  yearStart: number
-  yearEnd: number
 }
 
 const prisma = new PrismaClient()
-
-// Define custom types to match Prisma schema
-type QuestionWithYear = Question & {
-  year: number
-}
-
-type QuizWithYearRange = Quiz & {
-  yearStart: number
-  yearEnd: number
-}
 
 export const resolvers = {
   Query: {
@@ -135,7 +107,7 @@ export const resolvers = {
       })
     },
 
-    generateQuiz: async (_: any, { topicId, duration, yearStart, yearEnd }: GenerateQuizArgs, context: Context) => {
+    generateQuiz: async (_: any, { topicId, duration }: GenerateQuizArgs, context: Context) => {
       const questions = await prisma.question.findMany({
         where: {
           subject: {
@@ -165,9 +137,7 @@ export const resolvers = {
           duration,
           topicId,
           subjectId: topic.subjectId,
-          quizOwnedBy: 1,
-          yearStart,
-          yearEnd,
+          quizOwnedBy: 1, // You'll need to get this from context
         },
         include: {
           subject: true,
@@ -179,83 +149,6 @@ export const resolvers = {
       return {
         ...quiz,
         questions,
-      }
-    },
-
-    topicsBySubject: async (_: any, { subjectId }: { subjectId: number }) => {
-      return await prisma.topic.findMany({
-        where: { subjectId },
-        include: {
-          subject: true,
-        },
-      })
-    },
-  },
-
-  Mutation: {
-    createQuiz: async (_: any, { input }: { input: CreateQuizInput }) => {
-      const { topicId, difficulty, duration, numberOfQuestions, yearStart, yearEnd, name } = input
-
-      // Get random questions based on criteria
-      const availableQuestions = await prisma.question.findMany({
-        where: {
-          subject: {
-            topics: {
-              some: {
-                id: topicId
-              }
-            }
-          },
-          difficulty,
-          year: {
-            gte: yearStart,
-            lte: yearEnd
-          }
-        }
-      })
-
-      if (availableQuestions.length === 0) {
-        throw new Error(
-          `No questions available for the selected criteria. Please try different options.`
-        )
-      }
-
-      // Adjust numberOfQuestions if we have fewer questions than requested
-      const actualNumberOfQuestions = Math.min(numberOfQuestions, availableQuestions.length)
-
-      // Randomly select questions
-      const selectedQuestions = availableQuestions
-        .sort(() => Math.random() - 0.5)
-        .slice(0, actualNumberOfQuestions)
-
-      const topic = await prisma.topic.findUnique({
-        where: { id: topicId },
-        select: { subjectId: true }
-      })
-
-      if (!topic) throw new Error('Topic not found')
-
-      // Create quiz using Prisma's create
-      const quiz = await prisma.quiz.create({
-        data: {
-          duration,
-          topicId,
-          subjectId: topic.subjectId,
-          quizOwnedBy: 1, // Hardcoded user ID
-          numberOfQuestions: actualNumberOfQuestions,
-          yearStart,
-          yearEnd
-        },
-        include: {
-          subject: true,
-          topic: true,
-          owner: true,
-        }
-      })
-
-      return {
-        ...quiz,
-        questions: selectedQuestions,
       }
     }
   }
