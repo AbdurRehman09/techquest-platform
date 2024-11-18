@@ -7,13 +7,12 @@ generator client {
   provider = "prisma-client-js"
 }
 
-// Add this enum before the User model
+// Enum for user roles
 enum UserRole {
   ADMIN
   STUDENT
   TEACHER
 }
-
 
 model User {
   id        Int      @id @default(autoincrement())
@@ -24,41 +23,45 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  quizzes         Quiz[]          @relation("UserQuizzes")
+  quizzes         Quiz[]           @relation("UserQuizzes")
   customQuestions CustomQuestion[]
 
   @@map("users")
 }
 
 model Subject {
-  id      Int      @id @default(autoincrement())
-  name    String   @unique
+  id   Int    @id @default(autoincrement())
+  name String @unique
 
-  topics     Topic[]
-  quizzes    Quiz[]
-  questions  Question[]
+  topics          Topic[]
+  quizzes         Quiz[]
+  questions       Question[]
   customQuestions CustomQuestion[]
 
   @@map("subjects")
 }
 
 model Topic {
-  id        Int      @id @default(autoincrement())
-  name      String   @unique
+  id        Int    @id @default(autoincrement())
+  name      String @unique
   subjectId Int
 
-  subject   Subject  @relation(fields: [subjectId], references: [id])
-  quizzes   Quiz[]
+  subject Subject @relation(fields: [subjectId], references: [id])
+  quizzes Quiz[]
 
   @@map("topics")
 }
 
 model Quiz {
-  id          Int      @id @default(autoincrement())
-  quizOwnedBy Int
-  duration    Int
-  subjectId   Int
-  topicId     Int
+  id                Int      @id @default(autoincrement())
+  quizOwnedBy       Int
+  duration          Int
+  subjectId         Int
+  topicId           Int
+  numberOfQuestions Int      @default(0)
+  yearStart         Int
+  yearEnd           Int
+  createdAt         DateTime @default(now())
 
   owner   User    @relation("UserQuizzes", fields: [quizOwnedBy], references: [id])
   subject Subject @relation(fields: [subjectId], references: [id])
@@ -67,9 +70,8 @@ model Quiz {
   @@map("quizzes")
 }
 
-// New CustomQuestion model
 model CustomQuestion {
-  id          Int      @id @default(autoincrement())
+  id          Int    @id @default(autoincrement())
   description String
   subjectId   Int
   authorId    Int
@@ -80,28 +82,27 @@ model CustomQuestion {
   @@map("custom_questions")
 }
 
-// New Question model
 model Question {
   id          Int      @id @default(autoincrement())
   uuid        String   @unique
   description String
   difficulty  String
   subjectId   Int
+  createdAt   DateTime @default(now())
+  year        Int // New field added
 
-  subject Subject @relation(fields: [subjectId], references: [id])
-
-  explanations QuestionExplanation[]  // Add relation to explanations
+  subject      Subject               @relation(fields: [subjectId], references: [id])
+  explanations QuestionExplanation[]
 
   @@map("questions")
 }
 
-// New QuestionExplanation model
 model QuestionExplanation {
-  id          Int      @id @default(autoincrement())
-  questionId  Int
-  feedback    String   // AI feedback about the user's code   // Explanation of the best approach to the question
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id         Int      @id @default(autoincrement())
+  questionId Int
+  feedback   String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
 
