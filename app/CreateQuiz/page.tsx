@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { Layout, Typography, Select, Input, Slider, Button, Space, Radio, List, Switch, InputNumber, message, App } from 'antd';
 import { gql, useQuery, useMutation } from '@apollo/client';
+import { useRouter } from 'next/navigation';
 
 const { Content } = Layout;
 const { Title } = Typography;
@@ -36,6 +37,7 @@ const CREATE_QUIZ = gql`
 `;
 
 const CreateQuiz = () => {
+    const router = useRouter();
     const [quizName, setQuizName] = useState('');
     const [selectedTopic, setSelectedTopic] = useState<number | null>(null);
     const [difficulty, setDifficulty] = useState('easy');
@@ -61,6 +63,8 @@ const CreateQuiz = () => {
             } else {
                 message.success(`Quiz created successfully!`);
             }
+            // Redirect to QuizzesList after successful quiz creation
+            router.push('/Practise?tab=myquizzes');
         },
         onError: (error) => {
             console.error('GraphQL Error:', error);
@@ -79,7 +83,7 @@ const CreateQuiz = () => {
             : totalTime;
 
         try {
-            const response = await createQuiz({
+            await createQuiz({
                 variables: {
                     input: {
                         topicId: selectedTopic,
@@ -92,7 +96,6 @@ const CreateQuiz = () => {
                     }
                 }
             });
-            console.log('Quiz created:', response.data);
         } catch (error) {
             console.error('Error creating quiz:', error);
         }

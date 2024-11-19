@@ -90,6 +90,8 @@ export const typeDefs = gql`
     customQuestions(subjectId: Int): [CustomQuestion!]!
     questionExplanations(questionId: Int!): [QuestionExplanation!]!
     generateQuiz(topicId: Int!, duration: Int!): Quiz!
+    quizDetails(quizId: Int!): Quiz!
+    userQuizzes(userId: Int!): [Quiz!]!
   }
 
   type Mutation {
