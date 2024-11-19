@@ -66,6 +66,7 @@ model Quiz {
   owner   User    @relation("UserQuizzes", fields: [quizOwnedBy], references: [id])
   subject Subject @relation(fields: [subjectId], references: [id])
   topic   Topic   @relation(fields: [topicId], references: [id])
+  questions Question[]
 
   @@map("quizzes")
 }
@@ -89,10 +90,11 @@ model Question {
   difficulty  String
   subjectId   Int
   createdAt   DateTime @default(now())
-  year        Int // New field added
+  year        Int
 
   subject      Subject               @relation(fields: [subjectId], references: [id])
   explanations QuestionExplanation[]
+  quizzes      Quiz[]
 
   @@map("questions")
 }

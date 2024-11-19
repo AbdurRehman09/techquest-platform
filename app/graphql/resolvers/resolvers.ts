@@ -194,9 +194,16 @@ export const resolvers = {
 
   Mutation: {
     createQuiz: async (_: any, { input }: { input: CreateQuizInput }) => {
-      const { topicId, difficulty, duration, numberOfQuestions, yearStart, yearEnd, name } = input
+      const { topicId, difficulty, duration, numberOfQuestions, yearStart, yearEnd, name } = input;
 
-      // Get random questions based on criteria
+      const topic = await prisma.topic.findUnique({
+        where: { id: topicId },
+        select: { subjectId: true }
+      });
+
+      if (!topic) throw new Error('Topic not found');
+
+      // Get questions based on criteria
       const availableQuestions = await prisma.question.findMany({
         where: {
           subject: {
@@ -212,51 +219,62 @@ export const resolvers = {
             lte: yearEnd
           }
         }
-      })
+      });
 
       if (availableQuestions.length === 0) {
         throw new Error(
           `No questions available for the selected criteria. Please try different options.`
-        )
+        );
       }
-
-      // Adjust numberOfQuestions if we have fewer questions than requested
-      const actualNumberOfQuestions = Math.min(numberOfQuestions, availableQuestions.length)
 
       // Randomly select questions
       const selectedQuestions = availableQuestions
         .sort(() => Math.random() - 0.5)
-        .slice(0, actualNumberOfQuestions)
+        .slice(0, Math.min(numberOfQuestions, availableQuestions.length));
 
-      const topic = await prisma.topic.findUnique({
-        where: { id: topicId },
-        select: { subjectId: true }
-      })
-
-      if (!topic) throw new Error('Topic not found')
-
-      // Create quiz using Prisma's create
+      // Create quiz
       const quiz = await prisma.quiz.create({
         data: {
           duration,
           topicId,
           subjectId: topic.subjectId,
           quizOwnedBy: 1, // Hardcoded user ID
-          numberOfQuestions: actualNumberOfQuestions,
+          numberOfQuestions: selectedQuestions.length,
           yearStart,
           yearEnd
-        },
+        }
+      });
+
+      // Connect questions to quiz in a separate step
+      await prisma.quiz.update({
+        where: { id: quiz.id },
+        data: {
+          questions: {
+            connect: selectedQuestions.map(q => ({ id: q.id }))
+          }
+        }
+      });
+
+      // Fetch the complete quiz with all relations
+      const completeQuiz = await prisma.quiz.findUnique({
+        where: { id: quiz.id },
         include: {
           subject: true,
           topic: true,
           owner: true,
+          questions: {
+            include: {
+              explanations: true
+            }
+          }
         }
-      })
+      });
 
-      return {
-        ...quiz,
-        questions: selectedQuestions,
+      if (!completeQuiz) {
+        throw new Error('Failed to create quiz');
       }
+
+      return completeQuiz;
     }
   }
 } 
