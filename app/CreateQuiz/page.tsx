@@ -63,8 +63,8 @@ const CreateQuiz = () => {
             } else {
                 message.success(`Quiz created successfully!`);
             }
-            // Redirect to QuizzesList after successful quiz creation
-            router.push('/Practise?tab=myquizzes');
+            // Redirect to QuizzesList in Practise page with 'quizzes' tab selected
+            router.push('/Practise?tab=quizzes');
         },
         onError: (error) => {
             console.error('GraphQL Error:', error);

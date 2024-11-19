@@ -1,8 +1,9 @@
 'use client'
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, Button, Radio, Space, Typography } from 'antd';
 import { ArrowLeftOutlined, ArrowRightOutlined } from '@ant-design/icons';
-import AssignQuizModal from '../AssignQuiz/page'; // Import the AssignQuizModal component
+import { useSearchParams } from 'next/navigation';
+import AssignQuizModal from '../AssignQuiz/page';
 import QuizzesList from '../Components/QuizzesList/page';
 
 const { Title, Paragraph } = Typography;
@@ -66,8 +67,20 @@ const dummyData = {
 };
 
 const TechQuestPortal = () => {
+    const searchParams = useSearchParams();
     const { levels, topics, questions } = dummyData;
-    const [activeTab, setActiveTab] = useState('practice');
+    
+    // Determine the active tab from URL or prop
+    const urlTab = searchParams?.get('tab');
+    const [activeTab, setActiveTab] = useState(urlTab || 'practice');
+
+    // Update active tab if URL changes
+    useEffect(() => {
+        if (urlTab) {
+            setActiveTab(urlTab);
+        }
+    }, [urlTab]);
+
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
     const currentQuestion = questions[currentQuestionIndex];
 
@@ -164,7 +177,6 @@ const TechQuestPortal = () => {
                 return (
                     <>
                         <Title level={3}>Assigned Content</Title>
-                        {/* Render the AssignQuizModal component here */}
                         <AssignQuizModal />
                     </>
                 );
