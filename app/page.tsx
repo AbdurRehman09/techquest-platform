@@ -1,6 +1,6 @@
-import MaxWidthWrapper from "@/components/common/MaxWidthWrapper";
-import { Button, buttonVariants } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import MaxWidthWrapper from "@/app/Components/common/MaxWidthWrapper";
+import { Button, buttonVariants } from "../app/Components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../app/Components/ui/card";
 import { features, testimonials } from "@/constants";
 import Link from "next/link";
 
