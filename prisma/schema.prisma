@@ -1,101 +1,95 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
 datasource db {
   provider = "mysql"
   url      = env("DATABASE_URL")
 }
 
-generator client {
-  provider = "prisma-client-js"
-}
-
-// Enum for user roles
-enum UserRole {
-  ADMIN
-  STUDENT
-  TEACHER
-}
-
 model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
-  name      String?
-  password  String
-  role      UserRole @default(STUDENT)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  quizzes         Quiz[]           @relation("UserQuizzes")
+  id              Int              @id @default(autoincrement())
+  email           String           @unique
+  name            String?
+  password        String
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  role            UserRole         @default(STUDENT)
   customQuestions CustomQuestion[]
+  quizzes         Quiz[]           @relation("UserQuizzes")
 
   @@map("users")
 }
 
 model Subject {
-  id   Int    @id @default(autoincrement())
-  name String @unique
-
-  topics          Topic[]
-  quizzes         Quiz[]
-  questions       Question[]
+  id              Int              @id @default(autoincrement())
+  name            String           @unique
   customQuestions CustomQuestion[]
+  questions       Question[]
+  quizzes         Quiz[]
+  topics          Topic[]
 
   @@map("subjects")
 }
 
 model Topic {
-  id        Int    @id @default(autoincrement())
-  name      String @unique
+  id        Int     @id @default(autoincrement())
+  name      String  @unique
   subjectId Int
+  quizzes   Quiz[]
+  subject   Subject @relation(fields: [subjectId], references: [id])
 
-  subject Subject @relation(fields: [subjectId], references: [id])
-  quizzes Quiz[]
-
+  @@index([subjectId], map: "topics_subjectId_fkey")
   @@map("topics")
 }
 
 model Quiz {
-  id                Int      @id @default(autoincrement())
+  id                Int        @id @default(autoincrement())
   quizOwnedBy       Int
   duration          Int
   subjectId         Int
   topicId           Int
-  numberOfQuestions Int      @default(0)
-  yearStart         Int
+  numberOfQuestions Int        @default(0)
+  createdAt         DateTime   @default(now())
   yearEnd           Int
-  createdAt         DateTime @default(now())
+  yearStart         Int
+  owner             User       @relation("UserQuizzes", fields: [quizOwnedBy], references: [id])
+  subject           Subject    @relation(fields: [subjectId], references: [id])
+  topic             Topic      @relation(fields: [topicId], references: [id])
+  questions         Question[] @relation("QuestionToQuiz")
 
-  owner   User    @relation("UserQuizzes", fields: [quizOwnedBy], references: [id])
-  subject Subject @relation(fields: [subjectId], references: [id])
-  topic   Topic   @relation(fields: [topicId], references: [id])
-  questions Question[]
-
+  @@index([quizOwnedBy], map: "quizzes_quizOwnedBy_fkey")
+  @@index([subjectId], map: "quizzes_subjectId_fkey")
+  @@index([topicId], map: "quizzes_topicId_fkey")
   @@map("quizzes")
 }
 
 model CustomQuestion {
-  id          Int    @id @default(autoincrement())
+  id          Int     @id @default(autoincrement())
   description String
   subjectId   Int
   authorId    Int
+  author      User    @relation(fields: [authorId], references: [id])
+  subject     Subject @relation(fields: [subjectId], references: [id])
 
-  subject Subject @relation(fields: [subjectId], references: [id])
-  author  User    @relation(fields: [authorId], references: [id])
-
+  @@index([authorId], map: "custom_questions_authorId_fkey")
+  @@index([subjectId], map: "custom_questions_subjectId_fkey")
   @@map("custom_questions")
 }
 
 model Question {
-  id          Int      @id @default(autoincrement())
-  uuid        String   @unique
-  description String
-  difficulty  String
-  subjectId   Int
-  createdAt   DateTime @default(now())
-  year        Int
-
-  subject      Subject               @relation(fields: [subjectId], references: [id])
+  id           Int                   @id @default(autoincrement())
+  uuid         String                @unique
+  description  String
+  difficulty   String
+  subjectId    Int
+  year         Int
+  createdAt    DateTime              @default(now())
   explanations QuestionExplanation[]
-  quizzes      Quiz[]
+  subject      Subject               @relation(fields: [subjectId], references: [id])
+  quizzes      Quiz[]                @relation("QuestionToQuiz")
 
+  @@index([subjectId], map: "questions_subjectId_fkey")
   @@map("questions")
 }
 
@@ -105,8 +99,14 @@ model QuestionExplanation {
   feedback   String
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
 
-  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
-
+  @@index([questionId], map: "question_explanations_questionId_fkey")
   @@map("question_explanations")
+}
+
+enum UserRole {
+  ADMIN
+  STUDENT
+  TEACHER
 }
