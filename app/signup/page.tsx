@@ -1,14 +1,63 @@
 'use client';
 
-
 import React from 'react';
-import {Button,Checkbox,Flex,Radio,Space ,theme} from 'antd';
-import { Form,Input } from 'antd';
+import { Button, Checkbox, Form, Input, Radio, Space } from 'antd';
 import { GoogleOutlined } from '@ant-design/icons';
 import Image from 'next/image';
-import img from './signUp.jpg'
+import { signIn } from 'next-auth/react';
+import img from './signUp.jpg';
 import styles from './signup.module.css';
+import { useRouter } from 'next/navigation';
+import bcrypt from 'bcryptjs';
+
 const SignUpPage: React.FC = () => {
+  const router = useRouter();
+
+  const onFinish = async (values: any) => {
+    try {
+      // Hash password before sending
+      const hashedPassword = await bcrypt.hash(values.password, 10);
+
+      const response = await fetch('/api/signup', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...values,
+          password: hashedPassword
+        }),
+      });
+
+      if (response.ok) {
+        // Automatically sign in after signup
+        await signIn('credentials', {
+          redirect: false,
+          email: values.email,
+          password: values.password
+        });
+        router.push('/CommonDashboard');
+      } else {
+        // Handle signup error
+        const errorData = await response.json();
+        console.error('Signup failed', errorData);
+      }
+    } catch (error) {
+      console.error('Signup error', error);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    try {
+      await signIn('google', { 
+        callbackUrl: '/CommonDashboard',
+        redirect: true  // Change to true
+      });
+    } catch (error) {
+      console.error('Google Sign-In error', error);
+    }
+  };
+
   return (
     <div className={styles.container}>
       <div className={styles.imageWrapper}>
@@ -21,7 +70,13 @@ const SignUpPage: React.FC = () => {
       </div>
       <div className={styles.formWrapper}>
         <h1 className={styles.title}>SignUp</h1>
-        <Button icon={<GoogleOutlined />} type="primary" block className={styles.googleButton}>
+        <Button 
+          icon={<GoogleOutlined />} 
+          type="primary" 
+          block 
+          className={styles.googleButton}
+          onClick={handleGoogleSignIn}
+        >
           Continue with Google
         </Button>
         <div className={styles.divider}>----------------or email----------------</div>
@@ -29,6 +84,7 @@ const SignUpPage: React.FC = () => {
           name="basic"
           layout="vertical"
           className={styles.form}
+          onFinish={onFinish}
         >
           <div className={styles.rowclass}>
           <Form.Item
