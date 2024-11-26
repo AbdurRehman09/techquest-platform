@@ -4,6 +4,7 @@ import { Typography, Button, Card, Row, Col } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined } from '@ant-design/icons';
 import { gql, useQuery } from '@apollo/client';
 import { useRouter } from 'next/navigation';
+import AssignQuizModal from '../AssignQuizModal/page';
 
 const { Title, Text } = Typography;
 
@@ -46,6 +47,8 @@ interface QuizzesListProps {
 const QuizzesList: React.FC<QuizzesListProps> = ({ showCreateButton = true }) => {
   const router = useRouter();
   const userId = 1; // Hardcoded user ID
+  const [assignModalVisible, setAssignModalVisible] = useState(false);
+  const [selectedQuizId, setSelectedQuizId] = useState<number | null>(null);
 
   const { loading, error, data } = useQuery(GET_USER_QUIZZES, {
     variables: { userId }
@@ -60,7 +63,8 @@ const QuizzesList: React.FC<QuizzesListProps> = ({ showCreateButton = true }) =>
   };
 
   const handleAssignQuiz = (quizId: number) => {
-    console.log('Assign quiz', quizId);
+    setSelectedQuizId(quizId);
+    setAssignModalVisible(true);
   };
 
   const handleEditQuiz = (quizId: number) => {
@@ -146,6 +150,16 @@ const QuizzesList: React.FC<QuizzesListProps> = ({ showCreateButton = true }) =>
           </Row>
         </Card>
       ))}
+      {selectedQuizId && (
+        <AssignQuizModal
+          quizId={selectedQuizId}
+          visible={assignModalVisible}
+          onClose={() => {
+            setAssignModalVisible(false);
+            setSelectedQuizId(null);
+          }}
+        />
+      )}
     </>
   );
 };

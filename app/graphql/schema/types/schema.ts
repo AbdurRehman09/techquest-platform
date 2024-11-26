@@ -10,6 +10,7 @@ export const typeDefs = gql`
     updatedAt: String!
     quizzes: [Quiz!]!
     customQuestions: [CustomQuestion!]!
+    assignedQuizzes: [QuizAssignment!]!
   }
 
   enum UserRole {
@@ -69,6 +70,15 @@ export const typeDefs = gql`
     topic: Topic!
     owner: User!
     questions: [Question!]!
+    assignments: [QuizAssignment!]!
+  }
+
+  type QuizAssignment {
+    id: Int!
+    shareableLink: String!
+    quiz: Quiz!
+    students: [User!]!
+    createdAt: String!
   }
 
   input CreateQuizInput {
@@ -92,9 +102,13 @@ export const typeDefs = gql`
     generateQuiz(topicId: Int!, duration: Int!): Quiz!
     quizDetails(quizId: Int!): Quiz!
     userQuizzes(userId: Int!): [Quiz!]!
+    assignedQuizzes(userId: Int!): [QuizAssignment!]!
+    quizAssignmentByLink(shareableLink: String!): QuizAssignment
   }
 
   type Mutation {
     createQuiz(input: CreateQuizInput!): Quiz!
+    assignQuiz(quizId: Int!): QuizAssignment!
+    joinQuizByLink(shareableLink: String!): QuizAssignment!
   }
 ` 

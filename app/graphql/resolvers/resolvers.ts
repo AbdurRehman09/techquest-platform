@@ -1,7 +1,9 @@
 import { PrismaClient, Prisma, Question, Quiz } from '@prisma/client'
+import { nanoid } from 'nanoid';
 
 interface Context {
-  prisma: PrismaClient
+  prisma: PrismaClient;
+  userId?: number;
 }
 
 // Add all missing interfaces
@@ -222,6 +224,45 @@ export const resolvers = {
         }
       });
     },
+
+    assignedQuizzes: async (_: any, { userId }: { userId: number }, context: Context) => {
+      return await prisma.user.findUnique({
+        where: { id: userId },
+        include: {
+          _count: true,
+          quizzes: true,
+          customQuestions: true,
+          assignedQuizzes: {
+            include: {
+              quiz: {
+                include: {
+                  topic: true,
+                  subject: true
+                }
+              }
+            }
+          }
+        }
+      }).then(user => user?.assignedQuizzes || []);
+    },
+
+    quizAssignmentByLink: async (_: any, { shareableLink }: { shareableLink: string }) => {
+      return prisma.$transaction(async (tx) => {
+        const assignment = await tx.quizAssignment.findUnique({
+          where: { shareableLink },
+          include: {
+            quiz: {
+              include: {
+                topic: true,
+                subject: true
+              }
+            },
+            students: true
+          }
+        });
+        return assignment;
+      });
+    }
   },
 
   Mutation: {
@@ -307,6 +348,46 @@ export const resolvers = {
       }
 
       return completeQuiz;
+    },
+
+    assignQuiz: async (_: any, { quizId }: { quizId: number }, context: Context) => {
+      const shareableLink = nanoid(10);
+      
+      return prisma.$transaction(async (tx) => {
+        const assignment = await tx.quizAssignment.create({
+          data: {
+            quiz: { connect: { id: quizId } },
+            shareableLink
+          },
+          include: {
+            quiz: true,
+            students: true
+          }
+        });
+        return assignment;
+      });
+    },
+
+    joinQuizByLink: async (_: any, { shareableLink }: { shareableLink: string }, context: Context) => {
+      if (!context.userId) {
+        throw new Error('User must be authenticated');
+      }
+      
+      return prisma.$transaction(async (tx) => {
+        const assignment = await tx.quizAssignment.update({
+          where: { shareableLink },
+          data: {
+            students: {
+              connect: { id: context.userId }
+            }
+          },
+          include: {
+            quiz: true,
+            students: true
+          }
+        });
+        return assignment;
+      });
     }
   }
 } 

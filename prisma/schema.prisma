@@ -21,6 +21,7 @@ model User {
   role            UserRole         @default(STUDENT)
   customQuestions CustomQuestion[]
   quizzes         Quiz[]           @relation("UserQuizzes")
+  assignedQuizzes QuizAssignment[] @relation("StudentAssignments")
 
   @@map("users")
 }
@@ -61,6 +62,7 @@ model Quiz {
   subject           Subject    @relation(fields: [subjectId], references: [id])
   topic             Topic      @relation(fields: [topicId], references: [id])
   questions         Question[] @relation("QuestionToQuiz")
+  assignments       QuizAssignment[]
 
   @@index([quizOwnedBy], map: "quizzes_quizOwnedBy_fkey")
   @@index([subjectId], map: "quizzes_subjectId_fkey")
@@ -146,6 +148,17 @@ model VerificationToken {
 
   @@unique([identifier, token])
   @@map("verification_tokens")
+}
+
+model QuizAssignment {
+  id            Int      @id @default(autoincrement())
+  quizId        Int
+  shareableLink String   @unique
+  createdAt     DateTime @default(now())
+  quiz          Quiz     @relation(fields: [quizId], references: [id])
+  students      User[]   @relation("StudentAssignments")
+
+  @@map("quiz_assignments")
 }
 
 enum UserRole {
