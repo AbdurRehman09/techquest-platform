@@ -6,12 +6,14 @@ import Link from "next/link";
 
 export default function Home() {
   return (
-    <MaxWidthWrapper>
-      <HeroSection />
-      <FeaturesSection />
-      <TestimonialSection />
-      <CTASection />
-    </MaxWidthWrapper>
+    <div className="bg-[#e6f7ff]">
+      <MaxWidthWrapper>
+        <HeroSection />
+        <FeaturesSection />
+        <TestimonialSection />
+        <CTASection />
+      </MaxWidthWrapper>
+    </div>
   );
 }
 
