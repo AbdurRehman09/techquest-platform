@@ -5,6 +5,7 @@ import { ArrowLeftOutlined, ArrowRightOutlined } from '@ant-design/icons';
 import { useSearchParams } from 'next/navigation';
 import AssignQuizModal from '../AssignQuiz/page';
 import QuizzesList from '../Components/QuizzesList/page';
+import AssignedQuizzes from '../Components/AssignedQuizzes/page';
 
 const { Title, Paragraph } = Typography;
 
@@ -174,12 +175,7 @@ const TechQuestPortal = () => {
                     </>
                 );
             case 'assigned':
-                return (
-                    <>
-                        <Title level={3}>Assigned Content</Title>
-                        <AssignQuizModal />
-                    </>
-                );
+                return <AssignedQuizzes showAssignButton={false} />;
             default:
                 return null;
         }

@@ -1,15 +1,17 @@
 'use client'
 import React, { useState } from 'react';
-import styles from './teachers.module.css'
-import { Layout, Typography, Button, Card, Row, Col } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
+import { Layout, Typography, Button, Tabs } from 'antd';
+import { PlusOutlined } from '@ant-design/icons';
 import QuizzesList from '../Components/QuizzesList/page';
+import AssignedQuizzes from '../Components/AssignedQuizzes/page';
+import AssignQuizModal from '../AssignQuiz/page';
 
-const { Header, Content } = Layout;
-const { Title, Text } = Typography;
+const { Content } = Layout;
+const { Title } = Typography;
 
 const TeacherDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState('myQuizzes');
+  const [isAssignModalVisible, setIsAssignModalVisible] = useState(false);
 
   const handleTabChange = (tab: string) => {
     setActiveTab(tab);
@@ -23,22 +25,32 @@ const TeacherDashboard: React.FC = () => {
           <Button
             onClick={() => handleTabChange('myQuizzes')}
             className="mr-2 text-black"
-            style={{backgroundColor:"#f5f5f5"}}
+            style={{backgroundColor: activeTab === 'myQuizzes' ? "#c5e4f0" : "#f5f5f5"}}
           >
             My Quizzes
           </Button>
           <Button
-            type={activeTab === 'customQuestions' ? 'primary' : 'default'}
-            onClick={() => handleTabChange('customQuestions')}
-            style={{backgroundColor:"#c5e4f0"}}
+            onClick={() => handleTabChange('assigned')}
+            style={{backgroundColor: activeTab === 'assigned' ? "#c5e4f0" : "#f5f5f5"}}
           >
-            Custom questions
+            Assigned Quizzes
+          </Button>
+          <Button
+            onClick={() => handleTabChange('customQuestions')}
+            style={{backgroundColor: activeTab === 'customQuestions' ? "#c5e4f0" : "#f5f5f5"}}
+          >
+            Custom Questions
           </Button>
         </div>
-        {activeTab === 'myQuizzes' && <QuizzesList />}
-        {activeTab === 'customQuestions' && (
-          <p>Custom questions content goes here</p>
-        )}
+
+        {activeTab === 'myQuizzes' && <QuizzesList showAssignButton={true} />}
+        {activeTab === 'assigned' && <AssignedQuizzes showAssignButton={true} />}
+        {activeTab === 'customQuestions' && <p>Custom questions content goes here</p>}
+
+        <AssignQuizModal 
+          visible={isAssignModalVisible}
+          onClose={() => setIsAssignModalVisible(false)}
+        />
       </Content>
     </Layout>
   );

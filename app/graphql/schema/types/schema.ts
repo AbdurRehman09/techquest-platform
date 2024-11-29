@@ -1,13 +1,15 @@
 import { gql } from '@apollo/client'
 
 export const typeDefs = gql`
+  scalar DateTime
+
   type User {
     id: Int!
     email: String!
     name: String
     role: UserRole!
-    createdAt: String!
-    updatedAt: String!
+    createdAt: DateTime!
+    updatedAt: DateTime!
     quizzes: [Quiz!]!
     customQuestions: [CustomQuestion!]!
     assignedQuizzes: [QuizAssignment!]!
@@ -75,10 +77,12 @@ export const typeDefs = gql`
 
   type QuizAssignment {
     id: Int!
+    quizId: Int!
     shareableLink: String!
+    isUsed: Boolean!
+    createdAt: DateTime!
     quiz: Quiz!
     students: [User!]!
-    createdAt: String!
   }
 
   input CreateQuizInput {
@@ -104,11 +108,14 @@ export const typeDefs = gql`
     userQuizzes(userId: Int!): [Quiz!]!
     assignedQuizzes(userId: Int!): [QuizAssignment!]!
     quizAssignmentByLink(shareableLink: String!): QuizAssignment
+    user(id: Int!): User
   }
 
   type Mutation {
     createQuiz(input: CreateQuizInput!): Quiz!
     assignQuiz(quizId: Int!): QuizAssignment!
     joinQuizByLink(shareableLink: String!): QuizAssignment!
+    createQuizAssignment(quizId: Int!): QuizAssignment!
+    claimQuizAssignment(shareableLink: String!): QuizAssignment!
   }
 ` 

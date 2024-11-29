@@ -12,15 +12,16 @@ model User {
   email           String           @unique
   name            String?
   password        String?
-  emailVerified   DateTime?
-  image           String?
-  accounts        Account[]
-  sessions        Session[]
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
   role            UserRole         @default(STUDENT)
+  emailVerified   DateTime?
+  image           String?
+  provider        String?          @db.VarChar(255)
+  accounts        Account[]
   customQuestions CustomQuestion[]
   quizzes         Quiz[]           @relation("UserQuizzes")
+  sessions        Session[]
   assignedQuizzes QuizAssignment[] @relation("StudentAssignments")
 
   @@map("users")
@@ -49,20 +50,22 @@ model Topic {
 }
 
 model Quiz {
-  id                Int        @id @default(autoincrement())
+  id                Int              @id @default(autoincrement())
   quizOwnedBy       Int
+  title            String           @default("Untitled Quiz")
+  type             QuizType         @default(REGULAR)
   duration          Int
   subjectId         Int
   topicId           Int
-  numberOfQuestions Int        @default(0)
-  createdAt         DateTime   @default(now())
+  numberOfQuestions Int              @default(0)
+  createdAt         DateTime         @default(now())
   yearEnd           Int
   yearStart         Int
-  owner             User       @relation("UserQuizzes", fields: [quizOwnedBy], references: [id])
-  subject           Subject    @relation(fields: [subjectId], references: [id])
-  topic             Topic      @relation(fields: [topicId], references: [id])
-  questions         Question[] @relation("QuestionToQuiz")
   assignments       QuizAssignment[]
+  owner             User             @relation("UserQuizzes", fields: [quizOwnedBy], references: [id])
+  subject           Subject          @relation(fields: [subjectId], references: [id])
+  topic             Topic            @relation(fields: [topicId], references: [id])
+  questions         Question[]       @relation("QuestionToQuiz")
 
   @@index([quizOwnedBy], map: "quizzes_quizOwnedBy_fkey")
   @@index([subjectId], map: "quizzes_subjectId_fkey")
@@ -112,22 +115,22 @@ model QuestionExplanation {
 }
 
 model Account {
-  id                 String  @id @default(cuid())
-  userId             Int
-  type               String
-  provider           String
-  providerAccountId  String
-  refresh_token      String? @db.Text
-  access_token       String? @db.Text
-  expires_at         Int?
-  token_type         String?
-  scope              String?
-  id_token           String? @db.Text
-  session_state      String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                String  @id @default(cuid())
+  userId            Int
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
+  @@index([userId], map: "accounts_userId_fkey")
   @@map("accounts")
 }
 
@@ -138,6 +141,7 @@ model Session {
   expires      DateTime
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId], map: "sessions_userId_fkey")
   @@map("sessions")
 }
 
@@ -154,10 +158,12 @@ model QuizAssignment {
   id            Int      @id @default(autoincrement())
   quizId        Int
   shareableLink String   @unique
+  isUsed        Boolean  @default(false)
   createdAt     DateTime @default(now())
   quiz          Quiz     @relation(fields: [quizId], references: [id])
   students      User[]   @relation("StudentAssignments")
 
+  @@index([quizId], map: "quiz_assignments_quizId_fkey")
   @@map("quiz_assignments")
 }
 
@@ -165,4 +171,9 @@ enum UserRole {
   ADMIN
   STUDENT
   TEACHER
+}
+
+enum QuizType {
+  REGULAR
+  ASSIGNED
 }

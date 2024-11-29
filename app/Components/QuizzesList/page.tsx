@@ -5,6 +5,7 @@ import { PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined } from '@ant-de
 import { gql, useQuery } from '@apollo/client';
 import { useRouter } from 'next/navigation';
 import AssignQuizModal from '../AssignQuizModal/page';
+import { useSession } from 'next-auth/react';
 
 const { Title, Text } = Typography;
 
@@ -22,6 +23,9 @@ const GET_USER_QUIZZES = gql`
       }
       yearStart
       yearEnd
+    }
+    user(id: $userId) {
+      role
     }
   }
 `;
@@ -42,13 +46,18 @@ interface Quiz {
 
 interface QuizzesListProps {
   showCreateButton?: boolean;
+  showAssignButton?: boolean;
 }
 
-const QuizzesList: React.FC<QuizzesListProps> = ({ showCreateButton = true }) => {
+const QuizzesList: React.FC<QuizzesListProps> = ({ 
+  showCreateButton = true,
+  showAssignButton = false 
+}) => {
   const router = useRouter();
-  const userId = 1; // Hardcoded user ID
+  const userId = 90002; // Hardcoded user ID
   const [assignModalVisible, setAssignModalVisible] = useState(false);
   const [selectedQuizId, setSelectedQuizId] = useState<number | null>(null);
+  const { data: session } = useSession();
 
   const { loading, error, data } = useQuery(GET_USER_QUIZZES, {
     variables: { userId }
@@ -79,6 +88,10 @@ const QuizzesList: React.FC<QuizzesListProps> = ({ showCreateButton = true }) =>
   if (error) return <div>Error: {error.message}</div>;
 
   const quizzes: Quiz[] = data.userQuizzes;
+  const isTeacher = data?.user?.role === 'TEACHER';
+
+  // Show assign button only for teachers
+  const showAssignButtonForQuiz = showAssignButton && session?.user?.role === 'TEACHER';
 
   return (
     <>
@@ -110,13 +123,15 @@ const QuizzesList: React.FC<QuizzesListProps> = ({ showCreateButton = true }) =>
               >
                 Show Details
               </Button>
-              <Button 
-                style={{backgroundColor:"#c5e4f0"}} 
-                onClick={() => handleAssignQuiz(quiz.id)} 
-                className="mr-2"
-              >
-                Assign
-              </Button>
+              {showAssignButtonForQuiz && (
+                <Button 
+                  style={{backgroundColor:"#c5e4f0"}} 
+                  onClick={() => handleAssignQuiz(quiz.id)} 
+                  className="mr-2"
+                >
+                  Assign
+                </Button>
+              )}
               <Button 
                 style={{backgroundColor:"#c5e4f0"}} 
                 icon={<EditOutlined />} 

@@ -2,35 +2,36 @@
 import React, { useState } from 'react';
 import { Modal, Input, Button, message } from 'antd';
 import { CopyOutlined } from '@ant-design/icons';
-import { gql, useMutation } from '@apollo/client';
-
-const ASSIGN_QUIZ = gql`
-  mutation AssignQuiz($quizId: Int!) {
-    assignQuiz(quizId: $quizId) {
-      id
-      shareableLink
-    }
-  }
-`;
 
 interface AssignQuizModalProps {
-  quizId: number;
   visible: boolean;
   onClose: () => void;
+  quizId: number;
 }
 
-const AssignQuizModal: React.FC<AssignQuizModalProps> = ({ quizId, visible, onClose }) => {
+const AssignQuizModal: React.FC<AssignQuizModalProps> = ({ visible, onClose, quizId }) => {
   const [shareableLink, setShareableLink] = useState('');
-  const [assignQuiz] = useMutation(ASSIGN_QUIZ);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const generateLink = async () => {
+  const generateShareableLink = async () => {
     try {
-      const { data } = await assignQuiz({
-        variables: { quizId }
+      setIsLoading(true);
+      const response = await fetch('/api/assignments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ quizId }),
       });
-      setShareableLink(data.assignQuiz.shareableLink);
+
+      const data = await response.json();
+      if (response.ok) {
+        setShareableLink(data.shareableLink);
+      } else {
+        message.error(data.error || 'Failed to generate link');
+      }
     } catch (error) {
       message.error('Failed to generate link');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -41,40 +42,39 @@ const AssignQuizModal: React.FC<AssignQuizModalProps> = ({ quizId, visible, onCl
 
   return (
     <Modal
+      title="Assign Quiz"
       open={visible}
-      title="Share Quiz Link"
       onCancel={onClose}
       footer={[
-        <Button key="close" onClick={onClose}>
+        <Button key="cancel" onClick={onClose}>
           Close
+        </Button>,
+        <Button 
+          key="generate" 
+          type="primary" 
+          onClick={generateShareableLink}
+          loading={isLoading}
+          disabled={!!shareableLink}
+        >
+          Generate Link
         </Button>
       ]}
     >
-      <div className="mb-4">
-        <Button 
-          type="primary" 
-          onClick={generateLink} 
-          className="mb-4"
-          style={{ width: '100%' }}
-        >
-          Generate Shareable Link
-        </Button>
-        {shareableLink && (
-          <Input.Group compact>
-            <Input
-              style={{ width: 'calc(100% - 70px)' }}
-              value={shareableLink}
-              readOnly
-            />
-            <Button 
-              icon={<CopyOutlined />} 
-              onClick={handleCopy}
-              style={{ width: '70px' }}
-            >
-              Copy
-            </Button>
-          </Input.Group>
-        )}
+      {shareableLink ? (
+        <div className="flex items-center gap-2">
+          <Input value={shareableLink} readOnly />
+          <Button icon={<CopyOutlined />} onClick={handleCopy}>
+            Copy
+          </Button>
+        </div>
+      ) : (
+        <p>Click "Generate Link" to create a shareable link for students.</p>
+      )}
+      <div className="mt-4">
+        <p className="text-sm text-gray-500">
+          Note: This link can only be used by students to access the quiz.
+          Teachers cannot use this link to access the quiz.
+        </p>
       </div>
     </Modal>
   );

@@ -1,9 +1,12 @@
 import { PrismaClient, Prisma, Question, Quiz } from '@prisma/client'
 import { nanoid } from 'nanoid';
+import crypto from 'crypto';
+import { DateTimeResolver } from '../scalars/DateTime';
 
 interface Context {
   prisma: PrismaClient;
   userId?: number;
+  session?: any;
 }
 
 // Add all missing interfaces
@@ -60,6 +63,8 @@ type QuizWithYearRange = Quiz & {
 }
 
 export const resolvers = {
+  DateTime: DateTimeResolver,
+
   Query: {
     subjects: async (_: any, __: any, context: Context) => {
       return await prisma.subject.findMany({
@@ -225,25 +230,25 @@ export const resolvers = {
       });
     },
 
-    assignedQuizzes: async (_: any, { userId }: { userId: number }, context: Context) => {
-      return await prisma.user.findUnique({
-        where: { id: userId },
-        include: {
-          _count: true,
-          quizzes: true,
-          customQuestions: true,
-          assignedQuizzes: {
-            include: {
-              quiz: {
-                include: {
-                  topic: true,
-                  subject: true
-                }
-              }
+    assignedQuizzes: async (_: any, { userId }: { userId: number }, { prisma }: Context) => {
+      return prisma.quizAssignment.findMany({
+        where: {
+          students: {
+            some: {
+              id: userId
             }
           }
+        },
+        include: {
+          quiz: {
+            include: {
+              subject: true,
+              topic: true
+            }
+          },
+          students: true
         }
-      }).then(user => user?.assignedQuizzes || []);
+      });
     },
 
     quizAssignmentByLink: async (_: any, { shareableLink }: { shareableLink: string }) => {
@@ -261,6 +266,17 @@ export const resolvers = {
           }
         });
         return assignment;
+      });
+    },
+
+    user: async (_: any, { id }: { id: number }) => {
+      return await prisma.user.findUnique({
+        where: { id },
+        select: {
+          id: true,
+          role: true,
+          // ... other fields
+        }
       });
     }
   },
@@ -311,7 +327,7 @@ export const resolvers = {
           duration,
           topicId,
           subjectId: topic.subjectId,
-          quizOwnedBy: 1, // Hardcoded user ID
+          quizOwnedBy: 90002, // Hardcoded user ID
           numberOfQuestions: selectedQuestions.length,
           yearStart,
           yearEnd
@@ -387,6 +403,55 @@ export const resolvers = {
           }
         });
         return assignment;
+      });
+    },
+
+    createQuizAssignment: async (_: any, { quizId }: { quizId: number }, { prisma }: Context) => {
+      const shareableLink = crypto.randomBytes(32).toString('hex');
+      
+      return prisma.quizAssignment.create({
+        data: {
+          quizId,
+          shareableLink,
+          isUsed: false
+        },
+        include: {
+          quiz: true,
+          students: true
+        }
+      });
+    },
+
+    claimQuizAssignment: async (_: any, { shareableLink }: { shareableLink: string }, { prisma, session }: Context) => {
+      if (!session?.user?.id) {
+        throw new Error('Unauthorized');
+      }
+
+      const userId = parseInt(session.user.id as string, 10);
+
+      const assignment = await prisma.quizAssignment.findFirst({
+        where: {
+          shareableLink,
+          isUsed: false
+        }
+      });
+
+      if (!assignment) {
+        throw new Error('Invalid or expired link');
+      }
+
+      return prisma.quizAssignment.update({
+        where: { id: assignment.id },
+        data: {
+          isUsed: true,
+          students: {
+            connect: { id: userId }
+          }
+        },
+        include: {
+          quiz: true,
+          students: true
+        }
       });
     }
   }
