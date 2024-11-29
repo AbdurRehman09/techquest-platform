@@ -6,17 +6,15 @@ import { Sparkles } from 'lucide-react';
 import Link from "next/link";
 import { buttonVariants } from "../ui/button";
 import { usePathname } from 'next/navigation';
+import { useSession, signOut } from 'next-auth/react';
 
 const Navbar = () => {
+    const { data: session } = useSession();
     const pathname = usePathname();
     
-    // Don't render navbar on login or signup pages
     if (pathname === '/login' || pathname === '/signup') {
         return null;
     }
-
-    const user = false;
-    // const user = true; 
 
     return (
         <header className="bg-[#e6f7ff]">
@@ -31,42 +29,27 @@ const Navbar = () => {
                     </Link>
 
                     <nav className="hidden md:flex items-center space space-x-4">
-                            {
-                                !user ? (
-                                    <>
-                                    <Link href={"/login"}
-                                        className={
-                                            buttonVariants({
-                                                variant: "secondary",
-                                            })
-                                        }
-                                    >Login</Link>
-                                    <Link href={"/signup"}
-                                        className={buttonVariants()}
-                                    >Sign up</Link>
-                                    </>
-                                ) : (
-                                    <div className="flex items-center gap-2">
-                                        <Link href={"/CommonDashboard"}
-                                            className={
-                                                buttonVariants({
-                                                    variant: "secondary"
-                                                })
-                                            }
-                                        >Dashboard</Link>
-                                        <Link className={buttonVariants()} href={"/CreateQuiz"}>
-                                            Create
-                                        </Link>
-                                        <Link href={"/Signout"}
-                                            className={buttonVariants({
-                                                variant: "ghost"
-                                                })
-                                            }
-                                        >Sign out</Link>
-                                    </div>
-                                )
-                            }
-                        </nav>
+                        {!session ? (
+                            <>
+                                <Link href="/login" className={buttonVariants({ variant: "secondary" })}>
+                                    Login
+                                </Link>
+                                <Link href="/signup" className={buttonVariants()}>
+                                    Sign up
+                                </Link>
+                            </>
+                        ) : (
+                            <div className="flex items-center gap-2">
+                                <span>Welcome, {session.user.name}</span>
+                                <Link href="/CommonDashboard" className={buttonVariants({ variant: "secondary" })}>
+                                    Dashboard
+                                </Link>
+                                <button onClick={() => signOut()} className={buttonVariants({ variant: "ghost" })}>
+                                    Sign out
+                                </button>
+                            </div>
+                        )}
+                    </nav>
                 </div>
             </MaxWidthWrapper>
         </header>

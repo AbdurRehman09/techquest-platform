@@ -18,7 +18,7 @@ const LoginPage: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      console.log('Attempting login with:', { email: values.email });
+      console.log('Attempting login with:', values);
       
       const result = await signIn('credentials', {
         redirect: false,
@@ -29,19 +29,7 @@ const LoginPage: React.FC = () => {
       console.log('Login result:', result);
 
       if (result?.error) {
-        switch (result.error) {
-          case 'Missing credentials':
-            setError('Please enter both email and password');
-            break;
-          case 'No user found':
-            setError('No account found with this email');
-            break;
-          case 'Invalid password':
-            setError('Invalid password');
-            break;
-          default:
-            setError(result.error);
-        }
+        setError(result.error);
       } else {
         router.push('/CommonDashboard');
       }

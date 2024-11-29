@@ -33,9 +33,6 @@ const SignUpPage: React.FC = () => {
 
   const onFinish = async (values: any) => {
     try {
-      // Hash password before sending
-      const hashedPassword = await bcrypt.hash(values.password, 10);
-
       const response = await fetch('/api/signup', {
         method: 'POST',
         headers: {
@@ -43,17 +40,16 @@ const SignUpPage: React.FC = () => {
         },
         body: JSON.stringify({
           ...values,
-          password: hashedPassword,
-          provider: 'credentials' // Provider field added to distinguish auth method
+          password: values.password,
+          provider: 'credentials'
         }),
       });
 
       if (response.ok) {
-        // Send the original password, not the hashed one
         const signInResult = await signIn('credentials', {
           redirect: false,
           email: values.email,
-          password: values.password  // This is correct - sending plain password
+          password: values.password
         });
         
         if (signInResult?.error) {
@@ -61,9 +57,7 @@ const SignUpPage: React.FC = () => {
         } else {
           router.push('/CommonDashboard');
         }
-        
       } else {
-        // Handle signup error
         const errorData = await response.json();
         console.error('Signup failed', errorData);
       }

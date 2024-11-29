@@ -32,9 +32,6 @@ export const authOptions = {
       },
       async authorize(credentials) {
         try {
-          console.log('Login attempt - email:', credentials?.email);
-          console.log('Login attempt - password length:', credentials?.password?.length);
-
           if (!credentials?.email || !credentials?.password) {
             throw new Error('Missing credentials');
           }
@@ -49,18 +46,16 @@ export const authOptions = {
             throw new Error('No user found');
           }
 
-          console.log('Found user password length:', user.password.length);
-          
-          // Log the first few characters of both passwords (for debugging only)
-          console.log('Input password first 3 chars:', credentials.password.slice(0, 3));
-          console.log('Stored hashed password first 10 chars:', user.password.slice(0, 10));
+          // Log values for debugging
+          console.log('Input password:', credentials.password);
+          console.log('Stored hashed password:', user.password);
 
           const isPasswordValid = await bcrypt.compare(
             credentials.password,
             user.password
           );
 
-          console.log('Password comparison result:', isPasswordValid);
+          console.log('Password valid:', isPasswordValid);
 
           if (!isPasswordValid) {
             throw new Error('Invalid password');
