@@ -8,16 +8,21 @@ datasource db {
 }
 
 model User {
-  id              Int              @id @default(autoincrement())
-  email           String           @unique
-  name            String?
-  password        String           @default("OAUTH_USER")
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-  role            UserRole         @default(STUDENT)
-  customQuestions CustomQuestion[]
-  quizzes         Quiz[]           @relation("UserQuizzes")
-  provider        String?
+  id               Int                @id @default(autoincrement())
+  email            String             @unique
+  name             String?
+  password         String?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  role             users_role         @default(STUDENT)
+  emailVerified    DateTime?
+  image            String?
+  provider         String?            @db.VarChar(255)
+  accounts         accounts[]
+  customQuestions  CustomQuestion[]
+  quizzes          Quiz[]             @relation("UserQuizzes")
+  sessions         sessions[]
+  quiz_assignments quiz_assignments[] @relation("StudentAssignments")
 
   @@map("users")
 }
@@ -45,19 +50,22 @@ model Topic {
 }
 
 model Quiz {
-  id                Int        @id @default(autoincrement())
+  id                Int                @id @default(autoincrement())
   quizOwnedBy       Int
   duration          Int
   subjectId         Int
   topicId           Int
-  numberOfQuestions Int        @default(0)
-  createdAt         DateTime   @default(now())
+  numberOfQuestions Int                @default(0)
+  createdAt         DateTime           @default(now())
   yearEnd           Int
   yearStart         Int
-  owner             User       @relation("UserQuizzes", fields: [quizOwnedBy], references: [id])
-  subject           Subject    @relation(fields: [subjectId], references: [id])
-  topic             Topic      @relation(fields: [topicId], references: [id])
-  questions         Question[] @relation("QuestionToQuiz")
+  title             String             @default("Untitled Quiz")
+  type              quizzes_type       @default(REGULAR)
+  quiz_assignments  quiz_assignments[]
+  owner             User               @relation("UserQuizzes", fields: [quizOwnedBy], references: [id])
+  subject           Subject            @relation(fields: [subjectId], references: [id])
+  topic             Topic              @relation(fields: [topicId], references: [id])
+  questions         Question[]         @relation("QuestionToQuiz")
 
   @@index([quizOwnedBy], map: "quizzes_quizOwnedBy_fkey")
   @@index([subjectId], map: "quizzes_subjectId_fkey")
@@ -106,9 +114,62 @@ model QuestionExplanation {
   @@map("question_explanations")
 }
 
-enum UserRole {
+model accounts {
+  id                String  @id
+  userId            Int
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  users             User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId], map: "accounts_userId_fkey")
+}
+
+model quiz_assignments {
+  id            Int      @id @default(autoincrement())
+  quizId        Int
+  shareableLink String   @unique
+  createdAt     DateTime @default(now())
+  isUsed        Boolean  @default(false)
+  quizzes       Quiz     @relation(fields: [quizId], references: [id])
+  users         User[]   @relation("StudentAssignments")
+
+  @@index([quizId], map: "quiz_assignments_quizId_fkey")
+}
+
+model sessions {
+  id           String   @id
+  sessionToken String   @unique
+  userId       Int
+  expires      DateTime
+  users        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId], map: "sessions_userId_fkey")
+}
+
+model verification_tokens {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+enum users_role {
   ADMIN
   STUDENT
   TEACHER
-  PENDING
+}
+
+enum quizzes_type {
+  REGULAR
+  ASSIGNED
 }
