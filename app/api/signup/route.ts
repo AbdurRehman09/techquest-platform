@@ -20,33 +20,14 @@ export async function POST(request: NextRequest) {
       role 
     } = body
 
-    // Check database connection
-    try {
-      await prisma.$connect()
-    } catch (connectionError) {
-      console.error('Database Connection Error:', connectionError)
-      return NextResponse.json(
-        { error: 'Database connection failed' }, 
-        { status: 500 }
-      )
-    }
-
-    // Check if user already exists
-    const existingUser = await prisma.user.findUnique({
-      where: { email }
-    })
-
-    if (existingUser) {
-      return NextResponse.json(
-        { error: 'User already exists' }, 
-        { status: 400 }
-      )
-    }
+    console.log('Signup password length:', password?.length);
 
     // Hash password for credential signup
     const hashedPassword = password 
       ? await bcrypt.hash(password, 10) 
       : undefined
+
+    console.log('Hashed password length:', hashedPassword?.length);
 
     // Create new user
     const user = await prisma.user.create({
@@ -57,6 +38,9 @@ export async function POST(request: NextRequest) {
         role: role === 'teacher' ? 'TEACHER' : 'STUDENT'
       }
     })
+
+    // Log the stored password length
+    console.log('Stored password length in DB:', user.password?.length);
 
     return NextResponse.json(user, { status: 201 })
   } catch (error) {

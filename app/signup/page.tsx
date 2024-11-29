@@ -1,23 +1,38 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Button, Checkbox, Form, Input, Radio, Space } from 'antd';
 import { GoogleOutlined } from '@ant-design/icons';
 import Image from 'next/image';
-import { signIn } from 'next-auth/react';
+import { signIn, getSession } from 'next-auth/react';
 import img from './signUp.jpg';
 import styles from './signup.module.css';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import bcrypt from 'bcryptjs';
+import RoleSelectionModal from '../Components/RoleSelectionModal/RoleSelectionModal';
 
 const SignUpPage: React.FC = () => {
+  const searchParams = useSearchParams();
   const router = useRouter();
+  const [showRoleModal, setShowRoleModal] = useState(false);
+  const [pendingGoogleUser, setPendingGoogleUser] = useState<any>(null);
+
+  React.useEffect(() => {
+    const showRoleModal = searchParams.get('showRoleModal');
+    const session = getSession();
+    
+    if (showRoleModal === 'true' && session) {
+      session.then((sess) => {
+        if (sess?.user?.email) {
+          setPendingGoogleUser({ email: sess.user.email });
+          setShowRoleModal(true);
+        }
+      });
+    }
+  }, [searchParams]);
 
   const onFinish = async (values: any) => {
     try {
-      // Hash password before sending
-      const hashedPassword = await bcrypt.hash(values.password, 10);
-
       const response = await fetch('/api/signup', {
         method: 'POST',
         headers: {
@@ -25,20 +40,24 @@ const SignUpPage: React.FC = () => {
         },
         body: JSON.stringify({
           ...values,
-          password: hashedPassword
+          password: values.password,
+          provider: 'credentials'
         }),
       });
 
       if (response.ok) {
-        // Automatically sign in after signup
-        await signIn('credentials', {
+        const signInResult = await signIn('credentials', {
           redirect: false,
           email: values.email,
           password: values.password
         });
-        router.push('/CommonDashboard');
+        
+        if (signInResult?.error) {
+          console.error('Sign in after signup failed:', signInResult.error);
+        } else {
+          router.push('/CommonDashboard');
+        }
       } else {
-        // Handle signup error
         const errorData = await response.json();
         console.error('Signup failed', errorData);
       }
@@ -49,12 +68,70 @@ const SignUpPage: React.FC = () => {
 
   const handleGoogleSignIn = async () => {
     try {
-      await signIn('google', { 
-        callbackUrl: '/CommonDashboard',
-        redirect: true  // Change to true
+      const result = await signIn('google', {
+        redirect: false,
       });
+
+      if (result?.error) {
+        console.error('Google Sign-In error:', result.error);
+      } else if (result?.ok) {
+        // Wait for user creation and then check session
+        const checkSessionAndShowModal = async () => {
+          const session = await getSession();
+          console.log('Current session:', session);
+
+          if (session?.user?.email) {
+            // Verify user exists in database
+            const userResponse = await fetch(`/api/user?email=${session.user.email}`);
+            const userData = await userResponse.json();
+            
+            if (userData) {
+              setPendingGoogleUser({ email: session.user.email });
+              setShowRoleModal(true);
+            } else {
+              // If user not found, try again in 1 second
+              setTimeout(checkSessionAndShowModal, 1000);
+            }
+          } else {
+            // If no session, try again in 1 second
+            setTimeout(checkSessionAndShowModal, 1000);
+          }
+        };
+
+        checkSessionAndShowModal();
+      }
     } catch (error) {
-      console.error('Google Sign-In error', error);
+      console.error('Google Sign-In error:', error);
+    }
+  };
+
+  const handleRoleSelection = async (role: string) => {
+    try {
+      if (!pendingGoogleUser?.email) {
+        console.error('No pending user email');
+        return;
+      }
+
+      console.log('Updating role for:', pendingGoogleUser.email);
+      const response = await fetch('/api/update-role', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: pendingGoogleUser.email,
+          role: role === 'teacher' ? 'TEACHER' : 'STUDENT',
+        }),
+      });
+
+      if (response.ok) {
+        // Force reload to update session with new role
+        window.location.href = '/CommonDashboard';
+      } else {
+        console.error('Failed to update role');
+      }
+    } catch (error) {
+      console.error('Role selection error:', error);
     }
   };
 
@@ -155,6 +232,11 @@ const SignUpPage: React.FC = () => {
           Already have an account? <a href="/login">LogIn</a>
         </div>
       </div>
+      
+      <RoleSelectionModal 
+        isOpen={showRoleModal} 
+        onSubmit={handleRoleSelection}
+      />
     </div>
   );
 };

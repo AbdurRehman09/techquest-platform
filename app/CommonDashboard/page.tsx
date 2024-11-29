@@ -14,7 +14,8 @@ const courses = [
 
 const CourseOverview: React.FC = () => {
   return (
-    <div className="bg-blue-50 p-8 min-h-screen">
+    // bg-blue-50
+    <div className="bg-[#e6f7ff] p-8 min-h-screen">
       <Card className="max-w-4xl mx-auto">
         <div className="flex justify-between mb-4">
           <Button type="primary">Student</Button>

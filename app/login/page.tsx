@@ -12,14 +12,21 @@ import { useRouter } from 'next/navigation';
 const LoginPage: React.FC = () => {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
   const onFinish = async (values: any) => {
+    setLoading(true);
+    setError(null);
     try {
+      console.log('Attempting login with:', values);
+      
       const result = await signIn('credentials', {
         redirect: false,
         email: values.email,
         password: values.password
       });
+
+      console.log('Login result:', result);
 
       if (result?.error) {
         setError(result.error);
@@ -28,6 +35,9 @@ const LoginPage: React.FC = () => {
       }
     } catch (error) {
       console.error('Login error', error);
+      setError('An unexpected error occurred');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -38,17 +48,11 @@ const LoginPage: React.FC = () => {
         redirect: true 
       });
 
-      console.log('Google Sign-In Result:', result);
-
-      if (result?.error === 'OAuthAccountNotLinked') {
-        setError('This email is already registered with a different method. Try logging in with your password.');
-      } else if (result?.error) {
+      if (result?.error) {
         setError(`Login failed: ${result.error}`);
-      } else {
-        router.push('/CommonDashboard');
       }
     } catch (error) {
-      console.error('Google Sign-In error', error);
+      console.error('Google Sign-In error:', error);
       setError('An unexpected error occurred');
     }
   };
