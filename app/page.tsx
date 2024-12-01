@@ -6,12 +6,14 @@ import Link from "next/link";
 
 export default function Home() {
   return (
-    <MaxWidthWrapper>
-      <HeroSection />
-      <FeaturesSection />
-      <TestimonialSection />
-      <CTASection />
-    </MaxWidthWrapper>
+    <div className="bg-[#e6f7ff]">
+      <MaxWidthWrapper>
+        <HeroSection />
+        <FeaturesSection />
+        <TestimonialSection />
+        <CTASection />
+      </MaxWidthWrapper>
+    </div>
   );
 }
 
@@ -27,15 +29,15 @@ function HeroSection(){
       </p>
 
       <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center">
-        <Link href={"/"}
+        <Link href={"/signup"}
           className={buttonVariants()}
         >Get Started for Free</Link>
 
-        <Link href={"/pricing"}
+        <Link href={"/login"}
           className={buttonVariants({
             variant: "secondary",
           })}
-        >Pricing</Link>
+        >Login</Link>
       </div>
     </div>
   )
@@ -101,7 +103,7 @@ function CTASection() {
         Join hundereds of students who are already saving time when doing practice with us.
       </p>
 
-      <Link href={"/pricing"}
+      <Link href={"/CommonDashboard"}
         className={buttonVariants()}
       >
         Start Practicing Now
