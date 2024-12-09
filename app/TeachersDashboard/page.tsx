@@ -4,11 +4,20 @@ import { Layout, Typography, Button, Tabs } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import QuizzesList from '../Components/QuizzesList/page';
 import AssignedQuizzes from '../Components/AssignedQuizzes/page';
-import AssignQuizModal from '../AssignQuiz/page';
-
+import AssignQuizModal from '../Components/AssignQuizModal/page';
+import { gql, useQuery } from '@apollo/client';
+import { useSession } from 'next-auth/react';
 const { Content } = Layout;
 const { Title } = Typography;
 
+
+const GET_USER_ID = gql`
+  query GetUserByEmail($email: String!) {
+    getUserByEmail(email: $email) {
+      id
+    }
+  }
+`;
 const TeacherDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState('myQuizzes');
   const [isAssignModalVisible, setIsAssignModalVisible] = useState(false);
@@ -17,6 +26,17 @@ const TeacherDashboard: React.FC = () => {
     setActiveTab(tab);
   };
 
+  const { data: session } = useSession();
+
+  // Get database user ID using email
+  const { data: userData } = useQuery(GET_USER_ID, {
+    variables: { email: session?.user?.email },
+    skip: !session?.user?.email
+  });
+
+  if (!userData?.getUserByEmail?.id) {
+    return <div>Loading...</div>;
+  }
   return (
     <Layout className="min-h-screen">
       <Content className="p-6">
@@ -43,8 +63,9 @@ const TeacherDashboard: React.FC = () => {
           </Button>
         </div>
 
-        {activeTab === 'myQuizzes' && <QuizzesList showAssignButton={true} />}
-        {activeTab === 'assigned' && <AssignedQuizzes showAssignButton={true} />}
+        {activeTab === 'myQuizzes' && <QuizzesList showAssignButton={true} type="REGULAR"
+          userId={userData.getUserByEmail.id} />}
+        {activeTab === 'assigned' && <AssignedQuizzes />}
         {activeTab === 'customQuestions' && <p>Custom questions content goes here</p>}
 
         <AssignQuizModal 

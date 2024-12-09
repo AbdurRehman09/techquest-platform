@@ -1,13 +1,15 @@
 'use client'
 import React, { useState } from 'react';
-import { Typography, Button, Card, Row, Col } from 'antd';
+import { Typography, Button, Card, Row, Col, Empty } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined } from '@ant-design/icons';
 import { gql, useQuery } from '@apollo/client';
 import { useRouter } from 'next/navigation';
 import AssignQuizModal from '../AssignQuizModal/page';
 import { useSession } from 'next-auth/react';
 
+
 const { Title, Text } = Typography;
+
 
 const GET_USER_QUIZZES = gql`
   query GetUserQuizzes($userId: Int!) {
@@ -30,8 +32,37 @@ const GET_USER_QUIZZES = gql`
   }
 `;
 
+const GET_ASSIGNED_QUIZZES = gql`
+  query GetAssignedQuizzes($userId: Int!) {
+    assignedQuizzes(userId: $userId) {
+      id
+      quizzes {
+        id
+        title
+        duration
+        numberOfQuestions
+        topic {
+          name
+        }
+        subject {
+          name
+        }
+        yearStart
+        yearEnd
+        type
+      }
+    }
+  }
+`;
+
+interface AssignedQuizData {
+  id: number;
+  quizzes: Quiz;
+}
+
 interface Quiz {
   id: number;
+  title: string;
   duration: number;
   numberOfQuestions: number;
   topic: {
@@ -42,26 +73,41 @@ interface Quiz {
   };
   yearStart: number;
   yearEnd: number;
+  type?: 'REGULAR' | 'ASSIGNED';
 }
 
 interface QuizzesListProps {
-  showCreateButton?: boolean;
   showAssignButton?: boolean;
+  type?: 'REGULAR' | 'ASSIGNED';
+  userId?: number;
 }
 
-const QuizzesList: React.FC<QuizzesListProps> = ({ 
-  showCreateButton = true,
-  showAssignButton = false 
+const QuizzesList: React.FC<QuizzesListProps> = ({
+  showAssignButton = false,
+  type = 'REGULAR',
+  userId
 }) => {
   const router = useRouter();
-  const userId = 90002; // Hardcoded user ID
+  const { data: session } = useSession();
   const [assignModalVisible, setAssignModalVisible] = useState(false);
   const [selectedQuizId, setSelectedQuizId] = useState<number | null>(null);
-  const { data: session } = useSession();
 
-  const { loading, error, data } = useQuery(GET_USER_QUIZZES, {
-    variables: { userId }
-  });
+  // Get quizzes based on type
+  const { loading, error, data } = useQuery(
+    type === 'ASSIGNED' ? GET_ASSIGNED_QUIZZES : GET_USER_QUIZZES,
+    {
+      variables: { userId },
+      skip: !userId,
+    }
+  );
+
+  if (loading) return <div>Loading...</div>;
+  if (error) return <div>Error: {error.message}</div>;
+
+  // Map data based on type with proper typing
+  const quizzes: Quiz[] = type === 'ASSIGNED' 
+    ? data?.assignedQuizzes?.map((a: AssignedQuizData) => a.quizzes) || []
+    : data?.userQuizzes || [];
 
   const handleCreateQuiz = () => {
     router.push('/CreateQuiz');
@@ -76,37 +122,31 @@ const QuizzesList: React.FC<QuizzesListProps> = ({
     setAssignModalVisible(true);
   };
 
-  const handleEditQuiz = (quizId: number) => {
-    console.log('Edit quiz', quizId);
-  };
 
   const handleDeleteQuiz = (quizId: number) => {
     console.log('Delete quiz', quizId);
   };
 
-  if (loading) return <div>Loading...</div>;
-  if (error) return <div>Error: {error.message}</div>;
+  if (!userId) return <div>Please log in to view quizzes</div>;
 
-  const quizzes: Quiz[] = data.userQuizzes;
-  const isTeacher = data?.user?.role === 'TEACHER';
-
-  // Show assign button only for teachers
   const showAssignButtonForQuiz = showAssignButton && session?.user?.role === 'TEACHER';
 
   return (
     <>
-      {showCreateButton && (
-        <Button
-          type="primary"
-          icon={<PlusOutlined />}
-          onClick={handleCreateQuiz}
-          className="mb-4"
-        >
-          Create new quiz
-        </Button>
-      )}
-      {quizzes.map((quiz) => (
-        <Card key={quiz.id} className="mb-4" styles={{body:{ padding: '12px' }}}>
+
+      <Button
+        type="primary"
+        icon={<PlusOutlined />}
+        onClick={handleCreateQuiz}
+        className="mb-4"
+      >
+        Create new quiz
+      </Button>
+
+
+
+      {quizzes.map((quiz: Quiz) => (
+        <Card key={quiz.id} className="mb-4" styles={{ body: { padding: '12px' } }}>
           <Row justify="space-between" align="middle">
             <Col>
               <Title level={5} className="m-0 flex items-center">
@@ -115,34 +155,26 @@ const QuizzesList: React.FC<QuizzesListProps> = ({
               </Title>
             </Col>
             <Col>
-              <Button 
-                style={{backgroundColor:"#c5e4f0"}} 
+              <Button
+                style={{ backgroundColor: "#c5e4f0" }}
                 icon={<EyeOutlined />}
-                onClick={() => handleShowDetails(quiz.id)} 
+                onClick={() => handleShowDetails(quiz.id)}
                 className="mr-2"
               >
                 Show Details
               </Button>
               {showAssignButtonForQuiz && (
-                <Button 
-                  style={{backgroundColor:"#c5e4f0"}} 
-                  onClick={() => handleAssignQuiz(quiz.id)} 
+                <Button
+                  style={{ backgroundColor: "#c5e4f0" }}
+                  onClick={() => handleAssignQuiz(quiz.id)}
                   className="mr-2"
                 >
                   Assign
                 </Button>
               )}
-              <Button 
-                style={{backgroundColor:"#c5e4f0"}} 
-                icon={<EditOutlined />} 
-                onClick={() => handleEditQuiz(quiz.id)} 
-                className="mr-2"
-              >
-                Edit
-              </Button>
-              <Button 
-                className='text-white bg-red-500' 
-                icon={<DeleteOutlined />} 
+              <Button
+                className='text-white bg-red-500'
+                icon={<DeleteOutlined />}
                 onClick={() => handleDeleteQuiz(quiz.id)}
               >
                 Delete
@@ -164,7 +196,9 @@ const QuizzesList: React.FC<QuizzesListProps> = ({
             </Col>
           </Row>
         </Card>
-      ))}
+      ))
+      }
+
       {selectedQuizId && (
         <AssignQuizModal
           quizId={selectedQuizId}

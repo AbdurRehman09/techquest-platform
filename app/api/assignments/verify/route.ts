@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 import { getServerSession } from 'next-auth';
+import { authOptions } from '../../auth/[...nextauth]/route';
 
 const prisma = new PrismaClient();
 
 export async function POST(req: Request) {
   try {
-    const session = await getServerSession();
+    const session = await getServerSession(authOptions);
     const { shareableLink } = await req.json();
 
     if (!session?.user?.id || session.user.role !== 'STUDENT') {
@@ -14,7 +15,7 @@ export async function POST(req: Request) {
     }
 
     // Check if link exists and hasn't been used
-    const assignment = await prisma.quizAssignment.findFirst({
+    const assignment = await prisma.quiz_assignments.findFirst({
       where: {
         shareableLink,
         isUsed: false,
@@ -26,16 +27,17 @@ export async function POST(req: Request) {
     }
 
     // Mark link as used and connect student
-    const updatedAssignment = await prisma.quizAssignment.update({
+    const updatedAssignment = await prisma.quiz_assignments.update({
       where: { id: assignment.id },
       data: {
         isUsed: true,
-        students: {
+        users: {
           connect: { id: parseInt(session.user.id as string) }
         }
       },
       include: {
-        quiz: true
+        quizzes: true,
+        users: true
       }
     });
 

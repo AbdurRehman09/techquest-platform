@@ -6,10 +6,11 @@ import { PrismaClient } from '@prisma/client';
 import type { Account, Profile, User, Session } from 'next-auth'
 import { SessionStrategy } from 'next-auth'
 import type { JWT } from 'next-auth/jwt';
+import { AuthOptions } from 'next-auth';
 
 const prisma = new PrismaClient();
 
-export const authOptions = {
+export const authOptions: AuthOptions = {
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,

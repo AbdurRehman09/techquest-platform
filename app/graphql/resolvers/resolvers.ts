@@ -231,38 +231,38 @@ export const resolvers = {
     },
 
     assignedQuizzes: async (_: any, { userId }: { userId: number }, { prisma }: Context) => {
-      return prisma.quizAssignment.findMany({
+      return prisma.quiz_assignments.findMany({
         where: {
-          students: {
+          users: {
             some: {
               id: userId
             }
           }
         },
         include: {
-          quiz: {
+          quizzes: {
             include: {
               subject: true,
               topic: true
             }
           },
-          students: true
+          users: true
         }
       });
     },
 
     quizAssignmentByLink: async (_: any, { shareableLink }: { shareableLink: string }) => {
       return prisma.$transaction(async (tx) => {
-        const assignment = await tx.quizAssignment.findUnique({
+        const assignment = await tx.quiz_assignments.findUnique({
           where: { shareableLink },
           include: {
-            quiz: {
+            quizzes: {
               include: {
-                topic: true,
-                subject: true
+                subject: true,
+                topic: true
               }
             },
-            students: true
+            users: true
           }
         });
         return assignment;
@@ -278,11 +278,30 @@ export const resolvers = {
           // ... other fields
         }
       });
-    }
+    },
+
+    getUserByEmail: async (_: any, { email }: { email: string }) => {
+      const user = await prisma.user.findUnique({
+        where: { email }
+      });
+      return user;
+    },
   },
 
   Mutation: {
-    createQuiz: async (_: any, { input }: { input: CreateQuizInput }) => {
+    createQuiz: async (_: any, { input }: { input: CreateQuizInput }, context: Context) => {
+      if (!context.session?.user?.email) {
+        throw new Error('User must be authenticated');
+      }
+
+      const dbUser = await prisma.user.findUnique({
+        where: { email: context.session.user.email }
+      });
+
+      if (!dbUser) {
+        throw new Error('User not found');
+      }
+
       const { topicId, difficulty, duration, numberOfQuestions, yearStart, yearEnd, name } = input;
 
       const topic = await prisma.topic.findUnique({
@@ -321,13 +340,13 @@ export const resolvers = {
         .sort(() => Math.random() - 0.5)
         .slice(0, Math.min(numberOfQuestions, availableQuestions.length));
 
-      // Create quiz
+      // Create quiz with actual database user ID
       const quiz = await prisma.quiz.create({
         data: {
           duration,
           topicId,
           subjectId: topic.subjectId,
-          quizOwnedBy: 90002, // Hardcoded user ID
+          quizOwnedBy: dbUser.id, // Use actual database ID
           numberOfQuestions: selectedQuestions.length,
           yearStart,
           yearEnd
@@ -350,7 +369,12 @@ export const resolvers = {
         include: {
           subject: true,
           topic: true,
-          owner: true,
+          owner: {
+            select: {
+              id: true,
+              role: true
+            }
+          },
           questions: {
             include: {
               explanations: true
@@ -368,16 +392,16 @@ export const resolvers = {
 
     assignQuiz: async (_: any, { quizId }: { quizId: number }, context: Context) => {
       const shareableLink = nanoid(10);
-      
+
       return prisma.$transaction(async (tx) => {
-        const assignment = await tx.quizAssignment.create({
+        const assignment = await tx.quiz_assignments.create({
           data: {
-            quiz: { connect: { id: quizId } },
+            quizzes: { connect: { id: quizId } },
             shareableLink
           },
           include: {
-            quiz: true,
-            students: true
+            quizzes: true,
+            users: true
           }
         });
         return assignment;
@@ -388,18 +412,18 @@ export const resolvers = {
       if (!context.userId) {
         throw new Error('User must be authenticated');
       }
-      
+
       return prisma.$transaction(async (tx) => {
-        const assignment = await tx.quizAssignment.update({
+        const assignment = await tx.quiz_assignments.update({
           where: { shareableLink },
           data: {
-            students: {
+            users: {
               connect: { id: context.userId }
             }
           },
           include: {
-            quiz: true,
-            students: true
+            quizzes: true,
+            users: true
           }
         });
         return assignment;
@@ -408,51 +432,83 @@ export const resolvers = {
 
     createQuizAssignment: async (_: any, { quizId }: { quizId: number }, { prisma }: Context) => {
       const shareableLink = crypto.randomBytes(32).toString('hex');
-      
-      return prisma.quizAssignment.create({
+
+      return prisma.quiz_assignments.create({
         data: {
           quizId,
           shareableLink,
           isUsed: false
         },
         include: {
-          quiz: true,
-          students: true
+          quizzes: true,
+          users: true
         }
       });
     },
 
     claimQuizAssignment: async (_: any, { shareableLink }: { shareableLink: string }, { prisma, session }: Context) => {
-      if (!session?.user?.id) {
-        throw new Error('Unauthorized');
+      if (!session?.user?.email) {
+        throw new Error('Please login to access this quiz');
       }
 
-      const userId = parseInt(session.user.id as string, 10);
+      // First get database user ID using email
+      const dbUser = await prisma.user.findUnique({
+        where: { email: session.user.email }
+      });
 
-      const assignment = await prisma.quizAssignment.findFirst({
+      if (!dbUser) {
+        throw new Error('User not found');
+      }
+
+      // First check if assignment exists and is valid
+      const assignment = await prisma.quiz_assignments.findFirst({
         where: {
           shareableLink,
-          isUsed: false
+          isUsed: false,
+        },
+        include: {
+          quizzes: {
+            include: {
+              subject: true,
+              topic: true
+            }
+          }
         }
       });
 
       if (!assignment) {
-        throw new Error('Invalid or expired link');
+        throw new Error('This quiz link is invalid or has already been used');
       }
 
-      return prisma.quizAssignment.update({
+      // Update quiz type
+      await prisma.quiz.update({
+        where: { id: assignment.quizzes.id },
+        data: {
+          type: 'ASSIGNED'
+        }
+      });
+
+      // Update assignment and connect student
+      const updatedAssignment = await prisma.quiz_assignments.update({
         where: { id: assignment.id },
         data: {
           isUsed: true,
-          students: {
-            connect: { id: userId }
+          users: {
+            connect: { id: dbUser.id }  // Use database user ID
           }
         },
         include: {
-          quiz: true,
-          students: true
+          quizzes: {
+            include: {
+              subject: true,
+              topic: true
+            }
+          },
+          users: true
         }
       });
+
+      return updatedAssignment;
     }
   }
 } 

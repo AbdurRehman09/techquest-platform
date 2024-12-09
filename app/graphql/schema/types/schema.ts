@@ -68,11 +68,18 @@ export const typeDefs = gql`
     numberOfQuestions: Int!
     yearStart: Int!
     yearEnd: Int!
+    title: String!
+    type: QuizType!
     subject: Subject!
     topic: Topic!
     owner: User!
     questions: [Question!]!
     assignments: [QuizAssignment!]!
+  }
+
+  enum QuizType {
+    REGULAR
+    ASSIGNED
   }
 
   type QuizAssignment {
@@ -81,8 +88,8 @@ export const typeDefs = gql`
     shareableLink: String!
     isUsed: Boolean!
     createdAt: DateTime!
-    quiz: Quiz!
-    students: [User!]!
+    quizzes: Quiz!
+    users: [User!]!
   }
 
   input CreateQuizInput {
@@ -109,6 +116,7 @@ export const typeDefs = gql`
     assignedQuizzes(userId: Int!): [QuizAssignment!]!
     quizAssignmentByLink(shareableLink: String!): QuizAssignment
     user(id: Int!): User
+    getUserByEmail(email: String!): User
   }
 
   type Mutation {

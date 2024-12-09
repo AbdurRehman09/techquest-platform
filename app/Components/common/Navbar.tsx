@@ -17,7 +17,7 @@ const Navbar = () => {
     }
 
     return (
-        <header className="bg-[#e6f7ff]">
+        <header className="bg-white">
             <MaxWidthWrapper>
                 <div className="flex justify-between items-center h-16">
 

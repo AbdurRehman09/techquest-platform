@@ -6,7 +6,7 @@ import { CopyOutlined } from '@ant-design/icons';
 interface AssignQuizModalProps {
   visible: boolean;
   onClose: () => void;
-  quizId: number;
+  quizId?: number;
 }
 
 const AssignQuizModal: React.FC<AssignQuizModalProps> = ({ visible, onClose, quizId }) => {

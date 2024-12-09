@@ -2,14 +2,15 @@ import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 import { getServerSession } from 'next-auth';
 import crypto from 'crypto';
+import { authOptions } from '../auth/[...nextauth]/route';
 
 const prisma = new PrismaClient();
 
 export async function POST(req: Request) {
   try {
-    const session = await getServerSession();
+    const session = await getServerSession(authOptions);
     const { quizId } = await req.json();
-
+    console.log(session?.user?.id)
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -18,14 +19,14 @@ export async function POST(req: Request) {
     const shareableLink = crypto.randomBytes(32).toString('hex');
 
     // Create quiz assignment
-    const assignment = await prisma.quizAssignment.create({
+    const assignment = await prisma.quiz_assignments.create({
       data: {
         quizId,
         shareableLink,
       },
     });
 
-    return NextResponse.json({ shareableLink: `${process.env.NEXT_PUBLIC_BASE_URL}/quiz/assign/${shareableLink}` });
+    return NextResponse.json({ shareableLink: `${process.env.NEXTAUTH_URL}/quiz/assign/${shareableLink}` });
   } catch (error) {
     return NextResponse.json({ error: 'Failed to create assignment' }, { status: 500 });
   }
@@ -34,7 +35,7 @@ export async function POST(req: Request) {
 export async function PUT(req: Request) {
   try {
     const { shareableLink } = await req.json();
-    const session = await getServerSession();
+    const session = await getServerSession(authOptions);
 
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -44,15 +45,16 @@ export async function PUT(req: Request) {
     const userId = parseInt(session.user.id as string, 10);
 
     // Verify and add student to assignment
-    const assignment = await prisma.quizAssignment.update({
+    const assignment = await prisma.quiz_assignments.update({
       where: { shareableLink },
       data: {
-        students: {
+        users: {
           connect: { id: userId }
         }
       },
       include: {
-        quiz: true
+        quizzes: true,
+        users: true
       }
     });
 

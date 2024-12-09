@@ -60,7 +60,7 @@ model Quiz {
   yearEnd           Int
   yearStart         Int
   title             String             @default("Untitled Quiz")
-  type              quizzes_type       @default(REGULAR)
+  type              QuizType           @default(REGULAR)
   quiz_assignments  quiz_assignments[]
   owner             User               @relation("UserQuizzes", fields: [quizOwnedBy], references: [id])
   subject           Subject            @relation(fields: [subjectId], references: [id])
@@ -169,7 +169,7 @@ enum users_role {
   TEACHER
 }
 
-enum quizzes_type {
+enum QuizType {
   REGULAR
   ASSIGNED
 }
