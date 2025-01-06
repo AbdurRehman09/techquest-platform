@@ -16,6 +16,7 @@ const GET_USER_QUIZZES = gql`
   query GetUserQuizzes($userId: Int!) {
     userQuizzes(userId: $userId) {
       id
+      title
       duration
       numberOfQuestions
       topic {
@@ -126,9 +127,6 @@ const QuizzesList: React.FC<QuizzesListProps> = ({
   };
 
 
-  const handleDeleteQuiz = (quizId: number) => {
-    console.log('Delete quiz', quizId);
-  };
 
   if (!userId) return <div>Please log in to view quizzes</div>;
 
@@ -155,7 +153,7 @@ const QuizzesList: React.FC<QuizzesListProps> = ({
           <Row justify="space-between" align="middle">
             <Col>
               <Title level={5} className="m-0 flex items-center">
-                {quiz.topic.name}
+                {quiz.title}
                 <EditOutlined className="ml-2 text-gray-400" />
               </Title>
             </Col>

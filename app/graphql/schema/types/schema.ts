@@ -84,6 +84,7 @@ export const typeDefs = gql`
 
   type QuizAssignment {
     id: Int!
+    name: String!
     quizId: Int!
     shareableLink: String!
     createdAt: DateTime!

@@ -21,6 +21,7 @@ const CREATE_QUIZ = gql`
   mutation CreateQuiz($input: CreateQuizInput!) {
     createQuiz(input: $input) {
       id
+      title
       duration
       numberOfQuestions
       yearStart

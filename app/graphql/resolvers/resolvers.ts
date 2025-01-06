@@ -2,6 +2,7 @@ import { PrismaClient, Prisma, Question, Quiz } from '@prisma/client'
 import { nanoid } from 'nanoid';
 import crypto from 'crypto';
 import { DateTimeResolver } from '../scalars/DateTime';
+import { title } from 'process';
 
 interface Context {
   prisma: PrismaClient;
@@ -269,16 +270,17 @@ export const resolvers = {
         .sort(() => Math.random() - 0.5)
         .slice(0, Math.min(numberOfQuestions, availableQuestions.length));
 
-      // Create quiz with actual database user ID
+      // Create quiz with actual database user ID and title from input
       const quiz = await prisma.quiz.create({
         data: {
           duration,
           topicId,
           subjectId: topic.subjectId,
-          quizOwnedBy: dbUser.id, // Use actual database ID
+          quizOwnedBy: dbUser.id,
           numberOfQuestions: selectedQuestions.length,
           yearStart,
-          yearEnd
+          yearEnd,
+          title: name
         }
       });
 
