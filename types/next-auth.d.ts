@@ -6,14 +6,14 @@ declare module 'next-auth' {
     id: string
     email: string
     name: string | null
-    role: UserRole
+    role?: UserRole
     image?: string
   }
 
   interface Session {
     user: User & {
       id: string
-      role: UserRole
+      role:UserRole
     }
   }
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Button, Checkbox, Form, Input, Radio, Space } from 'antd';
+import { Button, Checkbox, Form, Input, Radio, Space, message } from 'antd';
 import { GoogleOutlined } from '@ant-design/icons';
 import Image from 'next/image';
 import { signIn, getSession } from 'next-auth/react';
@@ -17,11 +17,21 @@ const SignUpPage: React.FC = () => {
   const [showRoleModal, setShowRoleModal] = useState(false);
   const [pendingGoogleUser, setPendingGoogleUser] = useState<any>(null);
 
+  const showrolemodal = searchParams?.get('showRoleModal');
+
+  if (showrolemodal === 'true' && !showRoleModal) {
+    const hasShownMessage = localStorage.getItem('roleMessageShown');
+    if (!hasShownMessage) {
+      message.info('Please click "Continue with Google" one more time to select your role', 10);
+      localStorage.setItem('roleMessageShown', 'true');
+    }
+  }
   React.useEffect(() => {
-    const showRoleModal = searchParams.get('showRoleModal');
-    const session = getSession();
+    // Show message only once using localStorage
     
-    if (showRoleModal === 'true' && session) {
+
+    const session = getSession();
+    if (showrolemodal === 'true' && session) {
       session.then((sess) => {
         if (sess?.user?.email) {
           setPendingGoogleUser({ email: sess.user.email });
@@ -29,7 +39,14 @@ const SignUpPage: React.FC = () => {
         }
       });
     }
-  }, [searchParams]);
+  }, [searchParams, showrolemodal, showRoleModal]);
+
+  // Clear the message flag when component unmounts
+  React.useEffect(() => {
+    return () => {
+      localStorage.removeItem('roleMessageShown');
+    };
+  }, []);
 
   const onFinish = async (values: any) => {
     try {
@@ -51,7 +68,7 @@ const SignUpPage: React.FC = () => {
           email: values.email,
           password: values.password
         });
-        
+
         if (signInResult?.error) {
           console.error('Sign in after signup failed:', signInResult.error);
         } else {
@@ -84,7 +101,7 @@ const SignUpPage: React.FC = () => {
             // Verify user exists in database
             const userResponse = await fetch(`/api/user?email=${session.user.email}`);
             const userData = await userResponse.json();
-            
+
             if (userData) {
               setPendingGoogleUser({ email: session.user.email });
               setShowRoleModal(true);
@@ -112,7 +129,6 @@ const SignUpPage: React.FC = () => {
         return;
       }
 
-      console.log('Updating role for:', pendingGoogleUser.email);
       const response = await fetch('/api/update-role', {
         method: 'POST',
         headers: {
@@ -125,8 +141,11 @@ const SignUpPage: React.FC = () => {
       });
 
       if (response.ok) {
-        // Force reload to update session with new role
-        window.location.href = '/CommonDashboard';
+        // Force session update
+        await signIn('google', {
+          redirect: true,
+          callbackUrl: '/CommonDashboard'
+        });
       } else {
         console.error('Failed to update role');
       }
@@ -147,10 +166,10 @@ const SignUpPage: React.FC = () => {
       </div>
       <div className={styles.formWrapper}>
         <h1 className={styles.title}>SignUp</h1>
-        <Button 
-          icon={<GoogleOutlined />} 
-          type="primary" 
-          block 
+        <Button
+          icon={<GoogleOutlined />}
+          type="primary"
+          block
           className={styles.googleButton}
           onClick={handleGoogleSignIn}
         >
@@ -164,21 +183,21 @@ const SignUpPage: React.FC = () => {
           onFinish={onFinish}
         >
           <div className={styles.rowclass}>
-          <Form.Item
-            name="firstName"
-            label="First Name"
-            rules={[{ required: true, message: 'Please input your first name!' }]}
-          >
-            <Input placeholder="First Name" className={styles.input} />
-          </Form.Item>
-          <Form.Item
-            name="lastName"
-            label="Last Name"
-            rules={[{ required: true, message: 'Please input your last name!' }]}
-          >
-            <Input placeholder="Last Name" className={styles.input} style={{marginLeft:"10px"}} />
-          </Form.Item>
-          
+            <Form.Item
+              name="firstName"
+              label="First Name"
+              rules={[{ required: true, message: 'Please input your first name!' }]}
+            >
+              <Input placeholder="First Name" className={styles.input} />
+            </Form.Item>
+            <Form.Item
+              name="lastName"
+              label="Last Name"
+              rules={[{ required: true, message: 'Please input your last name!' }]}
+            >
+              <Input placeholder="Last Name" className={styles.input} style={{ marginLeft: "10px" }} />
+            </Form.Item>
+
           </div>
           <Form.Item
             name="email"
@@ -209,18 +228,18 @@ const SignUpPage: React.FC = () => {
               <Radio value="student">Student</Radio>
             </Radio.Group>
           </Form.Item>
-        
+
           <Space size="small">
-          <Form.Item 
-            name="agreement"
-            valuePropName="checked"
-            rules={[{ required: true, message: 'You must agree to the terms!' }]}
-          >
-            
-            <Checkbox>
-              I agree with TechQuest <a href="#">Terms of Service</a>
-            </Checkbox>
-          </Form.Item>
+            <Form.Item
+              name="agreement"
+              valuePropName="checked"
+              rules={[{ required: true, message: 'You must agree to the terms!' }]}
+            >
+
+              <Checkbox>
+                I agree with TechQuest <a href="#">Terms of Service</a>
+              </Checkbox>
+            </Form.Item>
           </Space>
           <Form.Item>
             <Button type="primary" htmlType="submit" block className={styles.submitButton}>
@@ -232,9 +251,9 @@ const SignUpPage: React.FC = () => {
           Already have an account? <a href="/login">LogIn</a>
         </div>
       </div>
-      
-      <RoleSelectionModal 
-        isOpen={showRoleModal} 
+
+      <RoleSelectionModal
+        isOpen={showRoleModal}
         onSubmit={handleRoleSelection}
       />
     </div>

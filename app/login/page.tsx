@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Button, Form, Input } from 'antd';
+import { Button, Form, Input, message } from 'antd';
 import { GoogleOutlined } from '@ant-design/icons';
 import { signIn } from 'next-auth/react';
 import Image from 'next/image';
@@ -11,31 +11,32 @@ import { useRouter } from 'next/navigation';
 
 const LoginPage: React.FC = () => {
   const router = useRouter();
-  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const onFinish = async (values: any) => {
     setLoading(true);
-    setError(null);
     try {
-      console.log('Attempting login with:', values);
-      
       const result = await signIn('credentials', {
         redirect: false,
         email: values.email,
         password: values.password
       });
 
-      console.log('Login result:', result);
-
       if (result?.error) {
-        setError(result.error);
+        // Show error message based on error type
+        if (result.error.includes('No user found')) {
+          message.error('Account does not exist. Please sign up first.');
+        } else if (result.error.includes('Invalid password')) {
+          message.error('Incorrect password. Please try again.');
+        } else {
+          message.error('Login failed. Please check your credentials.');
+        }
       } else {
+        message.success('Login successful!');
         router.push('/CommonDashboard');
       }
     } catch (error) {
-      console.error('Login error', error);
-      setError('An unexpected error occurred');
+      message.error('An unexpected error occurred. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -43,23 +44,20 @@ const LoginPage: React.FC = () => {
 
   const handleGoogleSignIn = async () => {
     try {
-      const result = await signIn('google', { 
-        callbackUrl: '/CommonDashboard',
-        redirect: true 
+      const result = await signIn('google', {
+        redirect: false,
       });
 
       if (result?.error) {
-        setError(`Login failed: ${result.error}`);
+        message.error('Google sign-in failed. Please try again.');
       }
     } catch (error) {
-      console.error('Google Sign-In error:', error);
-      setError('An unexpected error occurred');
+      message.error('Failed to connect with Google. Please try again.');
     }
   };
 
   return (
     <div className={styles.container}>
-      {error && <div style={{ color: 'red' }}>{error}</div>}
       <div className={styles.imageWrapper}>
         <Image
           src={img}
@@ -89,7 +87,10 @@ const LoginPage: React.FC = () => {
           <Form.Item
             name="email"
             label="Email"
-            rules={[{ required: true, message: 'Please input your email!' }]}
+            rules={[
+              { required: true, message: 'Please input your email!' },
+              { type: 'email', message: 'Please enter a valid email!' }
+            ]}
           >
             <Input type="email" placeholder="user@email.com" className={styles.input} />
           </Form.Item>
@@ -103,7 +104,13 @@ const LoginPage: React.FC = () => {
           </Form.Item>
 
           <Form.Item>
-            <Button type="primary" htmlType="submit" block className={styles.submitButton}>
+            <Button 
+              type="primary" 
+              htmlType="submit" 
+              block 
+              className={styles.submitButton}
+              loading={loading}
+            >
               Login
             </Button>
           </Form.Item>

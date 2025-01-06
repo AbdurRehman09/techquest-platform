@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Layout, Typography, Select, Input, Slider, Button, Space, Radio, List, Switch, InputNumber, message, App } from 'antd';
 import { gql, useQuery, useMutation } from '@apollo/client';
 import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 
 const { Content } = Layout;
 const { Title } = Typography;
@@ -20,6 +21,7 @@ const CREATE_QUIZ = gql`
   mutation CreateQuiz($input: CreateQuizInput!) {
     createQuiz(input: $input) {
       id
+      title
       duration
       numberOfQuestions
       yearStart
@@ -32,12 +34,16 @@ const CREATE_QUIZ = gql`
         description
         difficulty
       }
+      owner {
+        role
+      }
     }
   }
 `;
 
 const CreateQuiz = () => {
     const router = useRouter();
+    const { data: session } = useSession();
     const [quizName, setQuizName] = useState('');
     const [selectedTopic, setSelectedTopic] = useState<number | null>(null);
     const [difficulty, setDifficulty] = useState('easy');
@@ -63,8 +69,13 @@ const CreateQuiz = () => {
             } else {
                 message.success(`Quiz created successfully!`);
             }
-            // Redirect to QuizzesList in Practise page with 'quizzes' tab selected
-            router.push('/Practise?tab=quizzes');
+
+            // Redirect based on user role
+            if (session?.user?.role === 'TEACHER') {
+                router.push('/TeachersDashboard');
+            } else {
+                router.push('/Practise?tab=quizzes');
+            }
         },
         onError: (error) => {
             console.error('GraphQL Error:', error);

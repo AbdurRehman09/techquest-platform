@@ -1,15 +1,18 @@
 import { gql } from '@apollo/client'
 
 export const typeDefs = gql`
+  scalar DateTime
+
   type User {
     id: Int!
     email: String!
     name: String
     role: UserRole!
-    createdAt: String!
-    updatedAt: String!
+    createdAt: DateTime!
+    updatedAt: DateTime!
     quizzes: [Quiz!]!
     customQuestions: [CustomQuestion!]!
+    assignedQuizzes: [QuizAssignment!]!
   }
 
   enum UserRole {
@@ -65,10 +68,28 @@ export const typeDefs = gql`
     numberOfQuestions: Int!
     yearStart: Int!
     yearEnd: Int!
+    title: String!
+    type: QuizType!
     subject: Subject!
     topic: Topic!
     owner: User!
     questions: [Question!]!
+    assignments: [QuizAssignment!]!
+  }
+
+  enum QuizType {
+    REGULAR
+    ASSIGNED
+  }
+
+  type QuizAssignment {
+    id: Int!
+    name: String!
+    quizId: Int!
+    shareableLink: String!
+    createdAt: DateTime!
+    quizzes: Quiz!
+    users: [User!]!
   }
 
   input CreateQuizInput {
@@ -89,12 +110,16 @@ export const typeDefs = gql`
     questionsByTopic(topicId: Int!): [Question!]!
     customQuestions(subjectId: Int): [CustomQuestion!]!
     questionExplanations(questionId: Int!): [QuestionExplanation!]!
-    generateQuiz(topicId: Int!, duration: Int!): Quiz!
     quizDetails(quizId: Int!): Quiz!
     userQuizzes(userId: Int!): [Quiz!]!
+    assignedQuizzes(userId: Int!): [QuizAssignment!]!
+    user(id: Int!): User
+    getUserByEmail(email: String!): User
   }
 
   type Mutation {
     createQuiz(input: CreateQuizInput!): Quiz!
+    claimQuizAssignment(shareableLink: String!): QuizAssignment!
+    deleteQuiz(quizId: Int!): Boolean!
   }
 ` 

@@ -6,10 +6,11 @@ import { PrismaClient } from '@prisma/client';
 import type { Account, Profile, User, Session } from 'next-auth'
 import { SessionStrategy } from 'next-auth'
 import type { JWT } from 'next-auth/jwt';
+import { AuthOptions } from 'next-auth';
 
 const prisma = new PrismaClient();
 
-export const authOptions = {
+export const authOptions: AuthOptions = {
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
@@ -20,7 +21,7 @@ export const authOptions = {
           email: profile.email,
           name: profile.name,
           image: profile.picture,
-          role: 'STUDENT'
+          role: 'PENDING'
         }
       }
     }),
@@ -43,7 +44,7 @@ export const authOptions = {
           });
 
           if (!user || !user.password) {
-            throw new Error('No user found');
+            return Promise.reject(new Error('No user found'));
           }
 
           // Log values for debugging
@@ -75,10 +76,10 @@ export const authOptions = {
     }),
   ],
   callbacks: {
-    async signIn({ user, account, profile }: any) {
-      console.log('SignIn callback triggered:', { 
-        user, 
-        provider: account?.provider 
+    async signIn({ user, account, profile, trigger }: any) {
+      console.log('SignIn callback triggered:', {
+        user,
+        provider: account?.provider
       });
 
       if (account?.provider === 'google') {
@@ -95,7 +96,7 @@ export const authOptions = {
                 email: user.email!,
                 name: user.name!,
                 provider: 'google',
-                role: 'STUDENT',
+                role: 'PENDING',
                 password: 'OAUTH_USER',
               },
             });
@@ -103,6 +104,7 @@ export const authOptions = {
             return '/signup?showRoleModal=true';
           } else {
             console.log('Existing user found:', existingUser);
+            user.role = existingUser.role;
           }
           return true;
         } catch (error) {
@@ -112,15 +114,24 @@ export const authOptions = {
       }
       return true;
     },
-    async jwt({ token, user, account }: { token: JWT; user: User | undefined; account: Account | null }) {
-      console.log('JWT callback:', { token, user, accountType: account?.provider });
+    async jwt({ token, user, account, trigger, session }: {
+      token: JWT;
+      user: User | undefined;
+      account: Account | null;
+      trigger?: "update" | "signIn" | "signUp";
+      session?: any;
+    }) {
       if (user) {
         token.role = user.role;
       }
+
+      if (trigger === "update" && session?.user?.role) {
+        token.role = session.user.role;
+      }
+
       return token;
     },
     async session({ session, token }: { session: Session; token: JWT }) {
-      console.log('Session callback:', { session, token });
       if (session.user) {
         session.user.role = token.role;
         session.user.id = token.sub!;

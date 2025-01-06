@@ -1,20 +1,40 @@
 'use client'
 import React, { useState } from 'react';
-import styles from './teachers.module.css'
-import { Layout, Typography, Button, Card, Row, Col } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
+import { Layout, Typography, Button, Tabs } from 'antd';
 import QuizzesList from '../Components/QuizzesList/page';
+import AssignQuizModal from '../Components/AssignQuizModal/page';
+import { gql, useQuery } from '@apollo/client';
+import { useSession } from 'next-auth/react';
+const { Content } = Layout;
+const { Title } = Typography;
 
-const { Header, Content } = Layout;
-const { Title, Text } = Typography;
 
+const GET_USER_ID = gql`
+  query GetUserByEmail($email: String!) {
+    getUserByEmail(email: $email) {
+      id
+    }
+  }
+`;
 const TeacherDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState('myQuizzes');
+  const [isAssignModalVisible, setIsAssignModalVisible] = useState(false);
 
   const handleTabChange = (tab: string) => {
     setActiveTab(tab);
   };
 
+  const { data: session } = useSession();
+
+  // Get database user ID using email
+  const { data: userData } = useQuery(GET_USER_ID, {
+    variables: { email: session?.user?.email },
+    skip: !session?.user?.email
+  });
+
+  if (!userData?.getUserByEmail?.id) {
+    return <div>Loading...</div>;
+  }
   return (
     <Layout className="min-h-screen">
       <Content className="p-6">
@@ -23,22 +43,26 @@ const TeacherDashboard: React.FC = () => {
           <Button
             onClick={() => handleTabChange('myQuizzes')}
             className="mr-2 text-black"
-            style={{backgroundColor:"#f5f5f5"}}
+            style={{ backgroundColor: activeTab === 'myQuizzes' ? "#c5e4f0" : "#f5f5f5" }}
           >
             My Quizzes
           </Button>
           <Button
-            type={activeTab === 'customQuestions' ? 'primary' : 'default'}
             onClick={() => handleTabChange('customQuestions')}
-            style={{backgroundColor:"#c5e4f0"}}
+            style={{ backgroundColor: activeTab === 'customQuestions' ? "#c5e4f0" : "#f5f5f5" }}
           >
-            Custom questions
+            Custom Questions
           </Button>
         </div>
-        {activeTab === 'myQuizzes' && <QuizzesList />}
-        {activeTab === 'customQuestions' && (
-          <p>Custom questions content goes here</p>
-        )}
+
+        {activeTab === 'myQuizzes' && <QuizzesList showAssignButton={true} type="REGULAR"
+          userId={userData.getUserByEmail.id} />}
+        {activeTab === 'customQuestions' && <p>Custom questions content goes here</p>}
+
+        <AssignQuizModal
+          visible={isAssignModalVisible}
+          onClose={() => setIsAssignModalVisible(false)}
+        />
       </Content>
     </Layout>
   );

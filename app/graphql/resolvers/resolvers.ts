@@ -1,7 +1,13 @@
 import { PrismaClient, Prisma, Question, Quiz } from '@prisma/client'
+import { nanoid } from 'nanoid';
+import crypto from 'crypto';
+import { DateTimeResolver } from '../scalars/DateTime';
+import { title } from 'process';
 
 interface Context {
-  prisma: PrismaClient
+  prisma: PrismaClient;
+  userId?: number;
+  session?: any;
 }
 
 // Add all missing interfaces
@@ -20,13 +26,6 @@ interface TopicArgs {
 
 interface QuestionExplanationsArgs {
   questionId: number
-}
-
-interface GenerateQuizArgs {
-  topicId: number
-  duration: number
-  yearStart: number
-  yearEnd: number
 }
 
 interface CreateQuizInput {
@@ -58,6 +57,8 @@ type QuizWithYearRange = Quiz & {
 }
 
 export const resolvers = {
+  DateTime: DateTimeResolver,
+
   Query: {
     subjects: async (_: any, __: any, context: Context) => {
       return await prisma.subject.findMany({
@@ -135,53 +136,7 @@ export const resolvers = {
       })
     },
 
-    generateQuiz: async (_: any, { topicId, duration, yearStart, yearEnd }: GenerateQuizArgs, context: Context) => {
-      const questions = await prisma.question.findMany({
-        where: {
-          subject: {
-            topics: {
-              some: {
-                id: topicId
-              }
-            }
-          }
-        },
-        include: {
-          explanations: true,
-          subject: true,
-        },
-        take: 10,
-      })
-
-      const topic = await prisma.topic.findUnique({
-        where: { id: topicId },
-        select: { subjectId: true }
-      })
-
-      if (!topic) throw new Error('Topic not found')
-
-      const quiz = await prisma.quiz.create({
-        data: {
-          duration,
-          topicId,
-          subjectId: topic.subjectId,
-          quizOwnedBy: 1,
-          yearStart,
-          yearEnd,
-        },
-        include: {
-          subject: true,
-          topic: true,
-          owner: true,
-        }
-      })
-
-      return {
-        ...quiz,
-        questions,
-      }
-    },
-
+    
     topicsBySubject: async (_: any, { subjectId }: { subjectId: number }) => {
       return await prisma.topic.findMany({
         where: { subjectId },
@@ -222,10 +177,61 @@ export const resolvers = {
         }
       });
     },
+
+    assignedQuizzes: async (_: any, { userId }: { userId: number }, { prisma }: Context) => {
+      return prisma.quiz_assignments.findMany({
+        where: {
+          users: {
+            some: {
+              id: userId
+            }
+          }
+        },
+        include: {
+          quizzes: {
+            include: {
+              subject: true,
+              topic: true
+            }
+          },
+          users: true
+        }
+      });
+    },
+
+    user: async (_: any, { id }: { id: number }) => {
+      return await prisma.user.findUnique({
+        where: { id },
+        select: {
+          id: true,
+          role: true,
+          // ... other fields
+        }
+      });
+    },
+
+    getUserByEmail: async (_: any, { email }: { email: string }) => {
+      const user = await prisma.user.findUnique({
+        where: { email }
+      });
+      return user;
+    },
   },
 
   Mutation: {
-    createQuiz: async (_: any, { input }: { input: CreateQuizInput }) => {
+    createQuiz: async (_: any, { input }: { input: CreateQuizInput }, context: Context) => {
+      if (!context.session?.user?.email) {
+        throw new Error('User must be authenticated');
+      }
+
+      const dbUser = await prisma.user.findUnique({
+        where: { email: context.session.user.email }
+      });
+
+      if (!dbUser) {
+        throw new Error('User not found');
+      }
+
       const { topicId, difficulty, duration, numberOfQuestions, yearStart, yearEnd, name } = input;
 
       const topic = await prisma.topic.findUnique({
@@ -264,16 +270,17 @@ export const resolvers = {
         .sort(() => Math.random() - 0.5)
         .slice(0, Math.min(numberOfQuestions, availableQuestions.length));
 
-      // Create quiz
+      // Create quiz with actual database user ID and title from input
       const quiz = await prisma.quiz.create({
         data: {
           duration,
           topicId,
           subjectId: topic.subjectId,
-          quizOwnedBy: 1, // Hardcoded user ID
+          quizOwnedBy: dbUser.id,
           numberOfQuestions: selectedQuestions.length,
           yearStart,
-          yearEnd
+          yearEnd,
+          title: name
         }
       });
 
@@ -293,7 +300,12 @@ export const resolvers = {
         include: {
           subject: true,
           topic: true,
-          owner: true,
+          owner: {
+            select: {
+              id: true,
+              role: true
+            }
+          },
           questions: {
             include: {
               explanations: true
@@ -307,6 +319,137 @@ export const resolvers = {
       }
 
       return completeQuiz;
+    },
+
+    claimQuizAssignment: async (_: any, { shareableLink }: { shareableLink: string }, { prisma, session }: Context) => {
+      if (!session?.user?.email) {
+        throw new Error('Please login to access this quiz');
+      }
+
+      const dbUser = await prisma.user.findUnique({
+        where: { email: session.user.email }
+      });
+
+      if (!dbUser) {
+        throw new Error('User not found');
+      }
+
+      // Check if assignment exists
+      const assignment = await prisma.quiz_assignments.findFirst({
+        where: { shareableLink },
+        include: {
+          quizzes: {
+            include: {
+              subject: true,
+              topic: true
+            }
+          },
+          users: true
+        }
+      });
+
+      if (!assignment) {
+        throw new Error('Invalid quiz link');
+      }
+
+      // Check if user has already been assigned this quiz
+      const existingAssignment = await prisma.quiz_assignments.findFirst({
+        where: {
+          id: assignment.id,
+          users: {
+            some: {
+              id: dbUser.id
+            }
+          }
+        }
+      });
+
+      if (existingAssignment) {
+        throw new Error('You have already been assigned this quiz');
+      }
+
+      // Update quiz type and connect student
+      await prisma.quiz.update({
+        where: { id: assignment.quizzes.id },
+        data: { type: 'ASSIGNED' }
+      });
+
+      const updatedAssignment = await prisma.quiz_assignments.update({
+        where: { id: assignment.id },
+        data: {
+          users: {
+            connect: { id: dbUser.id }
+          }
+        },
+        include: {
+          quizzes: {
+            include: {
+              subject: true,
+              topic: true
+            }
+          },
+          users: true
+        }
+      });
+
+      return updatedAssignment;
+    },
+
+    deleteQuiz: async (_: any, { quizId }: { quizId: number }, { prisma, session }: Context) => {
+      try {
+        if (!session?.user?.email) {
+          throw new Error('Not authenticated');
+        }
+
+        // Get the quiz with its relationships and check ownership
+        const quiz = await prisma.quiz.findUnique({
+          where: { id: quizId },
+          include: {
+            quiz_assignments: {
+              include: {
+                users: true
+              }
+            },
+            questions: true,
+            owner: true
+          }
+        });
+
+        if (!quiz) {
+          throw new Error('Quiz not found');
+        }
+
+        // Check if user is the owner
+        if (quiz.owner.email !== session.user.email) {
+          throw new Error('You can only delete your own quizzes');
+        }
+
+        // Check if quiz is assigned to any student
+        if (quiz.quiz_assignments.some(assignment => assignment.users.length > 0)) {
+          throw new Error('Cannot delete quiz as it has been assigned to students');
+        }
+
+        // Delete with increased timeout and optimized operations
+        await prisma.$transaction(async (tx) => {
+          // 1. Delete all quiz assignments in one go
+          await tx.quiz_assignments.deleteMany({
+            where: { quizId }
+          });
+
+          // 2. Delete the quiz (this will automatically handle question relationships)
+          await tx.quiz.delete({
+            where: { id: quizId }
+          });
+        }, {
+          timeout: 10000, // Increase timeout to 10 seconds
+          maxWait: 15000  // Maximum time to wait for transaction
+        });
+
+        return true;
+      } catch (error) {
+        console.error('Error deleting quiz:', error);
+        throw error;
+      }
     }
   }
 } 
