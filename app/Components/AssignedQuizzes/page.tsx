@@ -31,6 +31,7 @@ const AssignedQuizzes = () => {
       showAssignButton={false}
       type="ASSIGNED"
       userId={userData.getUserByEmail.id}
+      showCreateButton={false}
     />
   );
 };

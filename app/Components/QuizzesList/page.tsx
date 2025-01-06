@@ -80,12 +80,14 @@ interface QuizzesListProps {
   showAssignButton?: boolean;
   type?: 'REGULAR' | 'ASSIGNED';
   userId?: number;
+  showCreateButton?: boolean;
 }
 
 const QuizzesList: React.FC<QuizzesListProps> = ({
   showAssignButton = false,
   type = 'REGULAR',
-  userId
+  userId,
+  showCreateButton=true
 }) => {
   const router = useRouter();
   const { data: session } = useSession();
@@ -134,14 +136,16 @@ const QuizzesList: React.FC<QuizzesListProps> = ({
   return (
     <>
 
-      <Button
-        type="primary"
-        icon={<PlusOutlined />}
-        onClick={handleCreateQuiz}
-        className="mb-4"
+      {showCreateButton && (
+        <Button
+          type="primary"
+          icon={<PlusOutlined />}
+          onClick={handleCreateQuiz}
+          className="mb-4"
       >
         Create new quiz
       </Button>
+ )}
 
 
 
