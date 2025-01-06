@@ -391,6 +391,63 @@ export const resolvers = {
       });
 
       return updatedAssignment;
+    },
+
+    deleteQuiz: async (_: any, { quizId }: { quizId: number }, { prisma, session }: Context) => {
+      try {
+        if (!session?.user?.email) {
+          throw new Error('Not authenticated');
+        }
+
+        // Get the quiz with its relationships and check ownership
+        const quiz = await prisma.quiz.findUnique({
+          where: { id: quizId },
+          include: {
+            quiz_assignments: {
+              include: {
+                users: true
+              }
+            },
+            questions: true,
+            owner: true
+          }
+        });
+
+        if (!quiz) {
+          throw new Error('Quiz not found');
+        }
+
+        // Check if user is the owner
+        if (quiz.owner.email !== session.user.email) {
+          throw new Error('You can only delete your own quizzes');
+        }
+
+        // Check if quiz is assigned to any student
+        if (quiz.quiz_assignments.some(assignment => assignment.users.length > 0)) {
+          throw new Error('Cannot delete quiz as it has been assigned to students');
+        }
+
+        // Delete with increased timeout and optimized operations
+        await prisma.$transaction(async (tx) => {
+          // 1. Delete all quiz assignments in one go
+          await tx.quiz_assignments.deleteMany({
+            where: { quizId }
+          });
+
+          // 2. Delete the quiz (this will automatically handle question relationships)
+          await tx.quiz.delete({
+            where: { id: quizId }
+          });
+        }, {
+          timeout: 10000, // Increase timeout to 10 seconds
+          maxWait: 15000  // Maximum time to wait for transaction
+        });
+
+        return true;
+      } catch (error) {
+        console.error('Error deleting quiz:', error);
+        throw error;
+      }
     }
   }
 } 

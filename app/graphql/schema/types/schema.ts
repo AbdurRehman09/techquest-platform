@@ -119,5 +119,6 @@ export const typeDefs = gql`
   type Mutation {
     createQuiz(input: CreateQuizInput!): Quiz!
     claimQuizAssignment(shareableLink: String!): QuizAssignment!
+    deleteQuiz(quizId: Int!): Boolean!
   }
 ` 

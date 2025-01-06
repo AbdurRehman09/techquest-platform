@@ -6,6 +6,7 @@ import { gql, useQuery } from '@apollo/client';
 import { useRouter } from 'next/navigation';
 import AssignQuizModal from '../AssignQuizModal/page';
 import { useSession } from 'next-auth/react';
+import DeleteQuizButton from '../DeleteQuizButton/page';
 
 
 const { Title, Text } = Typography;
@@ -95,7 +96,7 @@ const QuizzesList: React.FC<QuizzesListProps> = ({
   const [selectedQuizId, setSelectedQuizId] = useState<number | null>(null);
 
   // Get quizzes based on type
-  const { loading, error, data } = useQuery(
+  const { loading, error, data, refetch } = useQuery(
     type === 'ASSIGNED' ? GET_ASSIGNED_QUIZZES : GET_USER_QUIZZES,
     {
       variables: { userId },
@@ -176,13 +177,15 @@ const QuizzesList: React.FC<QuizzesListProps> = ({
                   Assign
                 </Button>
               )}
-              <Button
-                className='text-white bg-red-500'
-                icon={<DeleteOutlined />}
-                onClick={() => handleDeleteQuiz(quiz.id)}
-              >
-                Delete
-              </Button>
+              {type === 'REGULAR' && (
+                <DeleteQuizButton 
+                  quizId={quiz.id} 
+                  userId={userId!}
+                  onDelete={() => {
+                    refetch();
+                  }}
+                />
+              )}
             </Col>
           </Row>
           <Row className="mt-2 flex-col">
