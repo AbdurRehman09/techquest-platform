@@ -86,7 +86,6 @@ export const typeDefs = gql`
     id: Int!
     quizId: Int!
     shareableLink: String!
-    isUsed: Boolean!
     createdAt: DateTime!
     quizzes: Quiz!
     users: [User!]!
@@ -110,20 +109,15 @@ export const typeDefs = gql`
     questionsByTopic(topicId: Int!): [Question!]!
     customQuestions(subjectId: Int): [CustomQuestion!]!
     questionExplanations(questionId: Int!): [QuestionExplanation!]!
-    generateQuiz(topicId: Int!, duration: Int!): Quiz!
     quizDetails(quizId: Int!): Quiz!
     userQuizzes(userId: Int!): [Quiz!]!
     assignedQuizzes(userId: Int!): [QuizAssignment!]!
-    quizAssignmentByLink(shareableLink: String!): QuizAssignment
     user(id: Int!): User
     getUserByEmail(email: String!): User
   }
 
   type Mutation {
     createQuiz(input: CreateQuizInput!): Quiz!
-    assignQuiz(quizId: Int!): QuizAssignment!
-    joinQuizByLink(shareableLink: String!): QuizAssignment!
-    createQuizAssignment(quizId: Int!): QuizAssignment!
     claimQuizAssignment(shareableLink: String!): QuizAssignment!
   }
 ` 

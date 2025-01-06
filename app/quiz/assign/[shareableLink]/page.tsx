@@ -10,7 +10,6 @@ const VERIFY_AND_CLAIM_QUIZ = gql`
   mutation VerifyAndClaimQuiz($shareableLink: String!) {
     claimQuizAssignment(shareableLink: $shareableLink) {
       id
-      isUsed
       quizzes {
         id
         title
@@ -43,10 +42,16 @@ export default function QuizAssignmentPage({ params }: { params: { shareableLink
       }
     },
     onError: (error) => {
-      setError(error.message);
-      message.error(error.message);
-      // Redirect to practice page after showing error
-      setTimeout(() => router.push('/Practise'), 3000);
+      // Check if error is about already being assigned
+      if (error.message.includes('already been assigned')) {
+        message.info('You have already been assigned this quiz. Redirecting to practice page...');
+        setTimeout(() => router.push('/Practise?tab=assigned'), 2000);
+      } else {
+        setError(error.message);
+        message.error(error.message);
+        // Redirect to practice page after showing error
+        setTimeout(() => router.push('/Practise'), 3000);
+      }
     }
   });
 

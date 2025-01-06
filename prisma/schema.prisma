@@ -14,7 +14,7 @@ model User {
   password         String?
   createdAt        DateTime           @default(now())
   updatedAt        DateTime           @updatedAt
-  role             users_role         @default(STUDENT)
+  role             users_role?        
   emailVerified    DateTime?
   image            String?
   provider         String?            @db.VarChar(255)
@@ -137,10 +137,10 @@ model quiz_assignments {
   id            Int      @id @default(autoincrement())
   quizId        Int
   shareableLink String   @unique
-  createdAt     DateTime @default(now())
-  isUsed        Boolean  @default(false)
   quizzes       Quiz     @relation(fields: [quizId], references: [id])
   users         User[]   @relation("StudentAssignments")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @default(now()) @updatedAt
 
   @@index([quizId], map: "quiz_assignments_quizId_fkey")
 }

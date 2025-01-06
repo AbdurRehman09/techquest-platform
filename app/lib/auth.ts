@@ -19,7 +19,6 @@ export const authOptions: NextAuthOptions = {
           email: profile.email,
           name: profile.name,
           image: profile.picture,
-          role: 'STUDENT'
         }
       }
     }),
@@ -96,11 +95,11 @@ export const authOptions: NextAuthOptions = {
 
       // Set role for different authentication methods
       if (account?.provider === 'google') {
-        token.role = 'STUDENT';
+        token.role = 'PENDING';
       }
       
       if (user) {
-        token.role = user.role || 'STUDENT';
+        token.role = user.role || 'PENDING';
       }
 
       return token;

@@ -105,7 +105,7 @@ const QuizzesList: React.FC<QuizzesListProps> = ({
   if (error) return <div>Error: {error.message}</div>;
 
   // Map data based on type with proper typing
-  const quizzes: Quiz[] = type === 'ASSIGNED' 
+  const quizzes: Quiz[] = type === 'ASSIGNED'
     ? data?.assignedQuizzes?.map((a: AssignedQuizData) => a.quizzes) || []
     : data?.userQuizzes || [];
 

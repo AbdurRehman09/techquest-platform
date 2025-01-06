@@ -55,7 +55,7 @@ const CourseOverview: React.FC = () => {
 
     const role = session.user.role as keyof typeof course.path;
     const path = course.path[role];
-    
+    console.log(path);
     if (path) {
       router.push(path);
     }

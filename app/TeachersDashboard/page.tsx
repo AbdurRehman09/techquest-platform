@@ -1,9 +1,7 @@
 'use client'
 import React, { useState } from 'react';
 import { Layout, Typography, Button, Tabs } from 'antd';
-import { PlusOutlined } from '@ant-design/icons';
 import QuizzesList from '../Components/QuizzesList/page';
-import AssignedQuizzes from '../Components/AssignedQuizzes/page';
 import AssignQuizModal from '../Components/AssignQuizModal/page';
 import { gql, useQuery } from '@apollo/client';
 import { useSession } from 'next-auth/react';
@@ -45,19 +43,13 @@ const TeacherDashboard: React.FC = () => {
           <Button
             onClick={() => handleTabChange('myQuizzes')}
             className="mr-2 text-black"
-            style={{backgroundColor: activeTab === 'myQuizzes' ? "#c5e4f0" : "#f5f5f5"}}
+            style={{ backgroundColor: activeTab === 'myQuizzes' ? "#c5e4f0" : "#f5f5f5" }}
           >
             My Quizzes
           </Button>
           <Button
-            onClick={() => handleTabChange('assigned')}
-            style={{backgroundColor: activeTab === 'assigned' ? "#c5e4f0" : "#f5f5f5"}}
-          >
-            Assigned Quizzes
-          </Button>
-          <Button
             onClick={() => handleTabChange('customQuestions')}
-            style={{backgroundColor: activeTab === 'customQuestions' ? "#c5e4f0" : "#f5f5f5"}}
+            style={{ backgroundColor: activeTab === 'customQuestions' ? "#c5e4f0" : "#f5f5f5" }}
           >
             Custom Questions
           </Button>
@@ -65,10 +57,9 @@ const TeacherDashboard: React.FC = () => {
 
         {activeTab === 'myQuizzes' && <QuizzesList showAssignButton={true} type="REGULAR"
           userId={userData.getUserByEmail.id} />}
-        {activeTab === 'assigned' && <AssignedQuizzes />}
         {activeTab === 'customQuestions' && <p>Custom questions content goes here</p>}
 
-        <AssignQuizModal 
+        <AssignQuizModal
           visible={isAssignModalVisible}
           onClose={() => setIsAssignModalVisible(false)}
         />

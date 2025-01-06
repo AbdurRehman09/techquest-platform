@@ -1,5 +1,5 @@
 'use client'
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Modal, Input, Button, message } from 'antd';
 import { CopyOutlined } from '@ant-design/icons';
 
@@ -12,6 +12,28 @@ interface AssignQuizModalProps {
 const AssignQuizModal: React.FC<AssignQuizModalProps> = ({ visible, onClose, quizId }) => {
   const [shareableLink, setShareableLink] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (visible && quizId) {
+      fetchExistingLink();
+    }
+  }, [visible, quizId]);
+
+  const fetchExistingLink = async () => {
+    try {
+      setIsLoading(true);
+      const response = await fetch(`/api/assignments/existing/${quizId}`);
+      const data = await response.json();
+      
+      if (response.ok && data.shareableLink) {
+        setShareableLink(data.shareableLink);
+      }
+    } catch (error) {
+      console.error('Failed to fetch existing link:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const generateShareableLink = async () => {
     try {
