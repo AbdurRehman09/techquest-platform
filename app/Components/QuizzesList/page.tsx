@@ -194,7 +194,7 @@ const QuizzesList: React.FC<QuizzesListProps> = ({
               <Text>Questions: {quiz.numberOfQuestions}</Text>
             </Col>
             <Col span={8}>
-              <Text>Duration: {quiz.duration} mins</Text>
+              Duration: {quiz.duration === 30 ? `${quiz.duration} mins` : `${quiz.numberOfQuestions * quiz.duration} mins`}
             </Col>
             <Col span={24}>
               <Text>Year Range: {quiz.yearStart} - {quiz.yearEnd}</Text>

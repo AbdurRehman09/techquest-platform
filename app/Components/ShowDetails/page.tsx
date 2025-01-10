@@ -96,9 +96,10 @@ const ShowDetails: React.FC = () => {
             className="mb-6"
           >
             <Descriptions bordered>
-              <Descriptions.Item label="Duration">{quiz.duration} minutes</Descriptions.Item>
+              <Descriptions.Item label="Duration">
+                {quiz.duration === 30 ? `${quiz.duration} minutes` : `${quiz.numberOfQuestions * quiz.duration} minutes`}
+              </Descriptions.Item>
               <Descriptions.Item label="Questions">{quiz.numberOfQuestions}</Descriptions.Item>
-              <Descriptions.Item label="Year Range">{quiz.yearStart} - {quiz.yearEnd}</Descriptions.Item>
             </Descriptions>
           </Card>
 

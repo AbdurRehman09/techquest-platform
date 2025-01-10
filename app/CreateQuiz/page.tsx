@@ -90,7 +90,7 @@ const CreateQuiz = () => {
         }
 
         const duration = timerType === 'perQuestion'
-            ? timePerQuestion * numQuestions
+            ? timePerQuestion
             : totalTime;
 
         try {
