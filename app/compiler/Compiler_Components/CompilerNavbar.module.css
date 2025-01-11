@@ -1,0 +1,21 @@
+.navbar {
+  display: flex;
+  align-items: center;
+  padding-left: 20px;
+  height: 50px;
+  text-align: center;
+  color: #afec3f;
+  background-color: #474747;
+  gap: 20px;
+}
+
+.select {
+  width: 120px;
+  color: black;
+  background-color: #474747;
+}
+
+.select :global(.css-yk16xz-control) {
+  background-color: #474747 !important;
+  border-color: #afec3f !important;
+} 
