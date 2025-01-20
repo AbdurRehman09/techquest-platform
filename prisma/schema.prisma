@@ -57,6 +57,8 @@ model Quiz {
   topicId           Int
   numberOfQuestions Int                @default(0)
   createdAt         DateTime           @default(now())
+  finished_at       DateTime?
+  start_time        DateTime?
   yearEnd           Int
   yearStart         Int
   title             String             @default("Untitled Quiz")

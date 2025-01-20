@@ -149,15 +149,47 @@ export const resolvers = {
     quizDetails: async (_: any, { quizId }: { quizId: number }, context: Context) => {
       const quiz = await prisma.quiz.findUnique({
         where: { id: quizId },
-        include: {
+        select: {
+          id: true,
+          duration: true,
+          numberOfQuestions: true,
+          yearStart: true,
+          yearEnd: true,
+          title: true,
+          type: true,
+          start_time: true,
+          finished_at: true,
           questions: {
-            include: {
-              explanations: true
+            select: {
+              id: true,
+              description: true,
+              difficulty: true,
+              explanations: {
+                select: {
+                  id: true,
+                  feedback: true
+                }
+              }
             }
           },
-          topic: true,
-          subject: true,
-          owner: true
+          topic: {
+            select: {
+              id: true,
+              name: true
+            }
+          },
+          subject: {
+            select: {
+              id: true,
+              name: true
+            }
+          },
+          owner: {
+            select: {
+              id: true,
+              role: true
+            }
+          }
         }
       });
 
@@ -216,6 +248,18 @@ export const resolvers = {
       });
       return user;
     },
+
+    quizQuestions: async (_: any, { quizId }: { quizId: number }, { prisma }: Context) => {
+      const quiz = await prisma.quiz.findUnique({
+        where: { id: quizId },
+        include: {
+          questions: true
+        }
+      });
+      
+      if (!quiz) throw new Error('Quiz not found');
+      return quiz.questions;
+    }
   },
 
   Mutation: {

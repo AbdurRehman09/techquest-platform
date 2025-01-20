@@ -28,7 +28,7 @@ const CompilerNavbar: React.FC<NavbarProps> = ({
     { value: "python", label: "Python" },
     { value: "java", label: "Java" },
   ];
-  
+
   const themes: OptionType[] = [
     { value: "vs-dark", label: "Dark" },
     { value: "light", label: "Light" },
@@ -63,6 +63,7 @@ const CompilerNavbar: React.FC<NavbarProps> = ({
       />
       <label>Font Size</label>
       <input
+        style={{ color: '#4572c1', backgroundColor: '#4572c1' }}
         type="range"
         min="18"
         max="30"

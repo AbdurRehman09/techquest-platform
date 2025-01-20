@@ -1,7 +1,7 @@
 'use client'
 import React, { useState } from 'react';
-import { Typography, Button, Card, Row, Col, Empty } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined } from '@ant-design/icons';
+import { Typography, Button, Card, Row, Col, Empty, Tooltip } from 'antd';
+import { PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined, CodeOutlined } from '@ant-design/icons';
 import { gql, useQuery } from '@apollo/client';
 import { useRouter } from 'next/navigation';
 import AssignQuizModal from '../AssignQuizModal/page';
@@ -27,6 +27,8 @@ const GET_USER_QUIZZES = gql`
       }
       yearStart
       yearEnd
+      start_time
+      finished_at
     }
     user(id: $userId) {
       role
@@ -52,6 +54,8 @@ const GET_ASSIGNED_QUIZZES = gql`
         yearStart
         yearEnd
         type
+        start_time
+        finished_at
       }
     }
   }
@@ -75,7 +79,9 @@ interface Quiz {
   };
   yearStart: number;
   yearEnd: number;
-  type?: 'REGULAR' | 'ASSIGNED';
+  type: 'REGULAR' | 'ASSIGNED';
+  start_time: Date | null;
+  finished_at: Date | null;
 }
 
 interface QuizzesListProps {
@@ -126,7 +132,21 @@ const QuizzesList: React.FC<QuizzesListProps> = ({
     setAssignModalVisible(true);
   };
 
+  const getQuizButtonText = (quiz: Quiz) => {
+    if (quiz?.start_time === null) return 'Start Quiz';
+    if (quiz?.finished_at === null) return 'Resume Quiz';
+    return 'Restart Quiz';
+  };
 
+  const isQuizRestartable = (quiz: Quiz) => {
+    return type === 'REGULAR' && quiz.finished_at !== null;
+  };
+
+  const handleStartQuiz = (quiz: Quiz) => {
+    if (quiz.start_time === null || quiz.finished_at !== null) {
+      router.push(`/compiler?quizId=${quiz.id}`);
+    }
+  };
 
   if (!userId) return <div>Please log in to view quizzes</div>;
 
@@ -166,6 +186,22 @@ const QuizzesList: React.FC<QuizzesListProps> = ({
               >
                 Show Details
               </Button>
+              <Tooltip 
+                title={quiz.start_time && quiz.finished_at ? "Quiz already submitted" : undefined}
+              >
+                <Button
+                  className="bg-gray-100"
+                  icon={<CodeOutlined />}
+                  onClick={() => handleStartQuiz(quiz)}
+                  disabled={
+                    quiz.start_time !== null && 
+                    quiz.finished_at !== null && 
+                    type === 'ASSIGNED'
+                  }
+                >
+                  {getQuizButtonText(quiz)}
+                </Button>
+              </Tooltip>
               {showAssignButtonForQuiz && (
                 <Button
                   style={{ backgroundColor: "#c5e4f0" }}
@@ -194,7 +230,7 @@ const QuizzesList: React.FC<QuizzesListProps> = ({
               <Text>Questions: {quiz.numberOfQuestions}</Text>
             </Col>
             <Col span={8}>
-              Duration: {quiz.duration === 30 ? `${quiz.duration} mins` : `${quiz.numberOfQuestions * quiz.duration} mins`}
+              Duration: {quiz.duration} mins
             </Col>
             <Col span={24}>
               <Text>Year Range: {quiz.yearStart} - {quiz.yearEnd}</Text>

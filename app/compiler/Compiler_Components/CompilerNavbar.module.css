@@ -4,18 +4,17 @@
   padding-left: 20px;
   height: 50px;
   text-align: center;
-  color: #afec3f;
-  background-color: #474747;
+  background-color: #f0f0f0;
   gap: 20px;
 }
 
 .select {
   width: 120px;
   color: black;
-  background-color: #474747;
+  background-color: #f0f0f0;
 }
 
 .select :global(.css-yk16xz-control) {
-  background-color: #474747 !important;
+  background-color: #f0f0f0 !important;
   border-color: #afec3f !important;
-} 
+}
