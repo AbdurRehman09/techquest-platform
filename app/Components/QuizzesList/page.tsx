@@ -130,6 +130,9 @@ const QuizzesList: React.FC<QuizzesListProps> = ({
     ? data?.assignedQuizzes?.map((a: AssignedQuizData) => a.quizzes) || []
     : data?.userQuizzes || [];
 
+  // Determine user role from data or session
+  const userRole = data?.user?.role || session?.user?.role;
+
   const handleCreateQuiz = () => {
     router.push('/CreateQuiz');
   };
@@ -219,22 +222,24 @@ const QuizzesList: React.FC<QuizzesListProps> = ({
               >
                 Show Details
               </Button>
-              <Tooltip
-                title={quiz.start_time && quiz.finished_at ? "Quiz already submitted" : undefined}
-              >
-                <Button
-                  className="bg-gray-100"
-                  icon={<CodeOutlined />}
-                  onClick={() => handleStartQuiz(quiz)}
-                  disabled={
-                    quiz.start_time !== null &&
-                    quiz.finished_at !== null &&
-                    type === 'ASSIGNED'
-                  }
+              {userRole !== 'TEACHER' && (
+                <Tooltip
+                  title={quiz.start_time && quiz.finished_at ? "Quiz already submitted" : undefined}
                 >
-                  {getQuizButtonText(quiz)}
-                </Button>
-              </Tooltip>
+                  <Button
+                    className="bg-gray-100"
+                    icon={<CodeOutlined />}
+                    onClick={() => handleStartQuiz(quiz)}
+                    disabled={
+                      quiz.start_time !== null &&
+                      quiz.finished_at !== null &&
+                      type === 'ASSIGNED'
+                    }
+                  >
+                    {getQuizButtonText(quiz)}
+                  </Button>
+                </Tooltip>
+              )}
               {showAssignButtonForQuiz && (
                 <Button
                   style={{ backgroundColor: "#c5e4f0" }}

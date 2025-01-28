@@ -5,6 +5,7 @@ import { gql, useQuery, useMutation } from '@apollo/client';
 import { useSearchParams } from 'next/navigation';
 import { CodeOutlined } from '@ant-design/icons';
 import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 
 const { Content } = Layout;
 const { Title, Paragraph } = Typography;
@@ -83,6 +84,8 @@ const RESET_FINISHED_AT = gql`
 
 const ShowDetails: React.FC = () => {
   const router = useRouter();
+  const { data: session } = useSession();
+  
   // Extract quizId from URL
   const searchParams = useSearchParams();
   const quizId = Number(searchParams?.get('quizId') || '0');
@@ -100,6 +103,9 @@ const ShowDetails: React.FC = () => {
   if (loading) return <div>Loading...</div>;
   if (error) return <div>Error: {error.message}</div>;
   if (!data || !data.quizDetails) return <div>No quiz found</div>;
+
+  // Determine user role
+  const userRole = session?.user?.role;
 
   const handleStartQuiz = async () => {
     if (!quiz) return;
@@ -132,7 +138,6 @@ const ShowDetails: React.FC = () => {
   const getQuizButtonText = () => {
     if (quiz?.start_time === null) return 'Start Quiz';
     if (quiz?.finished_at === null) return 'Resume Quiz';
-    console.log("start_time",quiz?.start_time, "finished_at",quiz?.finished_at)
     return 'Restart Quiz';
   };
 
@@ -153,19 +158,20 @@ const ShowDetails: React.FC = () => {
             extra={
               <div>
                 <Tag color="blue" className="mr-2">{quiz?.subject.name}</Tag>
-                <Button
-                  className="bg-gray-100"
-                  icon={<CodeOutlined />}
-                  onClick={handleStartQuiz}
-                  disabled={
-                    quiz?.type === 'ASSIGNED' && 
-                    quiz.start_time !== null && 
-                    quiz.finished_at !== null
-                  }
-                  
-                >
-                  {getQuizButtonText()}
-                </Button>
+                {userRole !== 'TEACHER' && (
+                  <Button
+                    className="bg-gray-100"
+                    icon={<CodeOutlined />}
+                    onClick={handleStartQuiz}
+                    disabled={
+                      quiz?.type === 'ASSIGNED' && 
+                      quiz.start_time !== null && 
+                      quiz.finished_at !== null
+                    }
+                  >
+                    {getQuizButtonText()}
+                  </Button>
+                )}
               </div>
             }
             className="mb-6"
