@@ -1,8 +1,8 @@
 'use client'
 import React, { useState } from 'react';
-import { Typography, Button, Card, Row, Col, Empty, Tooltip } from 'antd';
+import { Typography, Button, Card, Row, message, Col, Empty, Tooltip } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined, CodeOutlined } from '@ant-design/icons';
-import { gql, useQuery } from '@apollo/client';
+import { gql, useMutation, useQuery } from '@apollo/client';
 import { useRouter } from 'next/navigation';
 import AssignQuizModal from '../AssignQuizModal/page';
 import { useSession } from 'next-auth/react';
@@ -60,6 +60,17 @@ const GET_ASSIGNED_QUIZZES = gql`
     }
   }
 `;
+const RESET_FINISHED_AT = gql`
+  mutation ResetQuizFinishedAt($quizId: Int!) {
+    resetQuizFinishedAt(quizId: $quizId) {
+      id
+      start_time
+      finished_at
+      title
+    }
+  }
+`;
+
 
 interface AssignedQuizData {
   id: number;
@@ -95,12 +106,13 @@ const QuizzesList: React.FC<QuizzesListProps> = ({
   showAssignButton = false,
   type = 'REGULAR',
   userId,
-  showCreateButton=true
+  showCreateButton = true
 }) => {
   const router = useRouter();
   const { data: session } = useSession();
   const [assignModalVisible, setAssignModalVisible] = useState(false);
   const [selectedQuizId, setSelectedQuizId] = useState<number | null>(null);
+  const [resetFinishedAt] = useMutation(RESET_FINISHED_AT);
 
   // Get quizzes based on type
   const { loading, error, data, refetch } = useQuery(
@@ -110,7 +122,6 @@ const QuizzesList: React.FC<QuizzesListProps> = ({
       skip: !userId,
     }
   );
-
   if (loading) return <div>Loading...</div>;
   if (error) return <div>Error: {error.message}</div>;
 
@@ -142,10 +153,32 @@ const QuizzesList: React.FC<QuizzesListProps> = ({
     return type === 'REGULAR' && quiz.finished_at !== null;
   };
 
-  const handleStartQuiz = (quiz: Quiz) => {
-    if (quiz.start_time === null || quiz.finished_at !== null) {
-      router.push(`/compiler?quizId=${quiz.id}`);
+  const handleStartQuiz = async (quiz: Quiz) => {
+    if (!quiz) return;
+
+    if (quiz.type === 'ASSIGNED' && quiz.start_time && quiz.finished_at) {
+      message.warning('This assigned quiz has already been submitted');
+      return;
     }
+
+    // If it's a restart scenario for a regular quiz
+    if (getQuizButtonText(quiz) === 'Restart Quiz') {
+      try {
+        // Reset finished_at before starting
+        await resetFinishedAt({ 
+          variables: { quizId: quiz.id },
+          onError: (error) => {
+            console.error('Error resetting finished_at:', error);
+            message.error('Failed to reset quiz');
+          }
+        });
+      } catch (error) {
+        console.error('Reset mutation error:', error);
+        return;
+      }
+    }
+
+    router.push(`/compiler?quizId=${quiz.id}`);
   };
 
   if (!userId) return <div>Please log in to view quizzes</div>;
@@ -161,10 +194,10 @@ const QuizzesList: React.FC<QuizzesListProps> = ({
           icon={<PlusOutlined />}
           onClick={handleCreateQuiz}
           className="mb-4"
-      >
-        Create new quiz
-      </Button>
- )}
+        >
+          Create new quiz
+        </Button>
+      )}
 
 
 
@@ -186,7 +219,7 @@ const QuizzesList: React.FC<QuizzesListProps> = ({
               >
                 Show Details
               </Button>
-              <Tooltip 
+              <Tooltip
                 title={quiz.start_time && quiz.finished_at ? "Quiz already submitted" : undefined}
               >
                 <Button
@@ -194,8 +227,8 @@ const QuizzesList: React.FC<QuizzesListProps> = ({
                   icon={<CodeOutlined />}
                   onClick={() => handleStartQuiz(quiz)}
                   disabled={
-                    quiz.start_time !== null && 
-                    quiz.finished_at !== null && 
+                    quiz.start_time !== null &&
+                    quiz.finished_at !== null &&
                     type === 'ASSIGNED'
                   }
                 >
@@ -212,8 +245,8 @@ const QuizzesList: React.FC<QuizzesListProps> = ({
                 </Button>
               )}
               {type === 'REGULAR' && (
-                <DeleteQuizButton 
-                  quizId={quiz.id} 
+                <DeleteQuizButton
+                  quizId={quiz.id}
                   userId={userId!}
                   onDelete={() => {
                     refetch();

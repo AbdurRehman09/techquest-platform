@@ -124,5 +124,8 @@ export const typeDefs = gql`
     createQuiz(input: CreateQuizInput!): Quiz!
     claimQuizAssignment(shareableLink: String!): QuizAssignment!
     deleteQuiz(quizId: Int!): Boolean!
+    startQuiz(quizId: Int!): Quiz!
+    finishQuiz(quizId: Int!): Quiz!
+    resetQuizFinishedAt(quizId: Int!): Quiz!
   }
-` 
+`

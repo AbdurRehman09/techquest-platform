@@ -1,7 +1,7 @@
 'use client';
 import React, { useState } from 'react';
 import { Layout, Typography, Card, Row, Col, Tag, Descriptions, Button, message } from 'antd';
-import { gql, useQuery } from '@apollo/client';
+import { gql, useQuery, useMutation } from '@apollo/client';
 import { useSearchParams } from 'next/navigation';
 import { CodeOutlined } from '@ant-design/icons';
 import { useRouter } from 'next/navigation';
@@ -70,6 +70,17 @@ const GET_QUIZ_DETAILS = gql`
   }
 `;
 
+const RESET_FINISHED_AT = gql`
+  mutation ResetQuizFinishedAt($quizId: Int!) {
+    resetQuizFinishedAt(quizId: $quizId) {
+      id
+      start_time
+      finished_at
+      title
+    }
+  }
+`;
+
 const ShowDetails: React.FC = () => {
   const router = useRouter();
   // Extract quizId from URL
@@ -77,6 +88,7 @@ const ShowDetails: React.FC = () => {
   const quizId = Number(searchParams?.get('quizId') || '0');
 
   const [quiz, setQuiz] = useState<QuizDetails | null>(null);
+  const [resetFinishedAt] = useMutation(RESET_FINISHED_AT);
 
   const { loading, error, data } = useQuery(GET_QUIZ_DETAILS, {
     variables: { quizId },
@@ -89,12 +101,29 @@ const ShowDetails: React.FC = () => {
   if (error) return <div>Error: {error.message}</div>;
   if (!data || !data.quizDetails) return <div>No quiz found</div>;
 
-  const handleStartQuiz = () => {
+  const handleStartQuiz = async () => {
     if (!quiz) return;
     
     if (quiz.type === 'ASSIGNED' && quiz.start_time && quiz.finished_at) {
       message.warning('This assigned quiz has already been submitted');
       return;
+    }
+
+    // If it's a restart scenario for a regular quiz
+    if (quiz.type === 'REGULAR' && quiz.start_time && quiz.finished_at) {
+      try {
+        // Reset finished_at before starting
+        await resetFinishedAt({ 
+          variables: { quizId: quiz.id },
+          onError: (error) => {
+            console.error('Error resetting finished_at:', error);
+            message.error('Failed to reset quiz');
+          }
+        });
+      } catch (error) {
+        console.error('Reset mutation error:', error);
+        return;
+      }
     }
 
     router.push(`/compiler?quizId=${quiz.id}`);

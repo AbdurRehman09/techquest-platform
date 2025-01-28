@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { gql, useQuery } from '@apollo/client';
+import { gql, useQuery, useMutation } from '@apollo/client';
 import Editor, { OnChange } from "@monaco-editor/react";
 import dynamic from 'next/dynamic';
 import styles from './compiler.module.css';
@@ -10,6 +10,8 @@ import Image from 'next/image';
 import { Button, Progress } from 'antd';
 import { LeftOutlined, RightOutlined } from '@ant-design/icons';
 import Split from 'split.js';
+import { useRouter } from 'next/navigation';
+import { message } from 'antd';
 
 // Dynamically import Navbar to avoid SSR issues with react-select
 const CompilerNavbar = dynamic(() => import('./Compiler_Components/CompilerNavbar'), { ssr: false });
@@ -20,6 +22,41 @@ const GET_QUIZ_QUESTIONS = gql`
       id
       description
       difficulty
+    }
+  }
+`;
+
+// Add GraphQL mutations
+const START_QUIZ = gql`
+  mutation StartQuiz($quizId: Int!) {
+    startQuiz(quizId: $quizId) {
+      id
+      start_time
+      finished_at
+      title
+    }
+  }
+`;
+
+const FINISH_QUIZ = gql`
+  mutation FinishQuiz($quizId: Int!) {
+    finishQuiz(quizId: $quizId) {
+      id
+      start_time
+      finished_at
+      title
+    }
+  }
+`;
+
+// Add new GraphQL mutation
+const RESET_FINISHED_AT = gql`
+  mutation ResetQuizFinishedAt($quizId: Int!) {
+    resetQuizFinishedAt(quizId: $quizId) {
+      id
+      start_time
+      finished_at
+      title
     }
   }
 `;
@@ -92,6 +129,8 @@ export default function CompilerPage() {
   const options = {
     fontSize: fontSize
   }
+
+  const router = useRouter();
 
   async function compile() {
     setLoading(true);
@@ -174,6 +213,83 @@ export default function CompilerPage() {
     }
   }, []);
 
+  // Add mutations
+  const [startQuiz] = useMutation(START_QUIZ);
+  const [finishQuiz] = useMutation(FINISH_QUIZ);
+  const [resetFinishedAt] = useMutation(RESET_FINISHED_AT);
+
+  // Modify useEffect to start quiz automatically when first loaded
+  useEffect(() => {
+    if (quizId && questionsData) {
+      try {
+        startQuiz({ 
+          variables: { quizId },
+          // Optional: handle success/error
+          onError: (error) => {
+            console.error('Error starting quiz:', error);
+          }
+        });
+      } catch (error) {
+        console.error('Mutation error:', error);
+      }
+    }
+  }, [quizId, questionsData]);
+
+  // Update Finish Quiz button handler
+  const handleFinishQuiz = async () => {
+    try {
+      await finishQuiz({ 
+        variables: { quizId },
+        onCompleted: () => {
+          // Redirect or show completion message
+          router.push('/Practise?tab=quizzes');
+        },
+        onError: (error) => {
+          message.error('Failed to finish quiz');
+          console.error('Finish quiz error:', error);
+        }
+      });
+    } catch (error) {
+      console.error('Finish quiz mutation error:', error);
+    }
+  };
+
+  // Modify handleStartQuiz to reset finished_at if needed
+  const handleStartQuiz = async () => {
+    try {
+      // Check if quiz button text is 'Restart Quiz'
+      if (getQuizButtonText() === 'Restart Quiz') {
+        await resetFinishedAt({ 
+          variables: { quizId },
+          onError: (error) => {
+            console.error('Error resetting finished_at:', error);
+            message.error('Failed to reset quiz');
+          }
+        });
+      }
+
+      // Proceed with starting quiz
+      await startQuiz({ 
+        variables: { quizId },
+        onError: (error) => {
+          console.error('Error starting quiz:', error);
+        }
+      });
+    } catch (error) {
+      console.error('Mutation error:', error);
+    }
+  };
+
+  // Add method to determine quiz button text
+  const getQuizButtonText = () => {
+    if (!quizData?.quizDetails) return 'Start Quiz';
+    const { start_time, finished_at } = quizData.quizDetails;
+    
+    if (start_time === null) return 'Start Quiz';
+    if (finished_at === null) return 'Resume Quiz';
+    return 'Restart Quiz';
+  };
+
   return (
     <div className={styles.App}>
       <CompilerNavbar
@@ -246,7 +362,7 @@ export default function CompilerPage() {
             type="primary" 
             danger
             className={styles.finishBtn}
-            onClick={() => {/* Handle finish quiz */}}
+            onClick={handleFinishQuiz}
           >
             Finish Quiz
           </Button>

@@ -494,6 +494,104 @@ export const resolvers = {
         console.error('Error deleting quiz:', error);
         throw error;
       }
+    },
+
+    startQuiz: async (_: any, { quizId }: { quizId: number }, { prisma, session }: Context) => {
+      // Ensure user is authenticated
+      if (!session?.user?.email) {
+        throw new Error('Not authenticated');
+      }
+
+      // Find the user
+      const user = await prisma.user.findUnique({
+        where: { email: session.user.email }
+      });
+
+      if (!user) {
+        throw new Error('User not found');
+      }
+
+      // Update quiz with start time
+      const updatedQuiz = await prisma.quiz.update({
+        where: { id: quizId },
+        data: {
+          start_time: new Date()
+        },
+        select: {
+          id: true,
+          start_time: true,
+          finished_at: true,
+          title: true,
+          // Add other fields you might need
+        }
+      });
+
+      return updatedQuiz;
+    },
+
+    finishQuiz: async (_: any, { quizId }: { quizId: number }, { prisma, session }: Context) => {
+      // Ensure user is authenticated
+      if (!session?.user?.email) {
+        throw new Error('Not authenticated');
+      }
+
+      // Find the user
+      const user = await prisma.user.findUnique({
+        where: { email: session.user.email }
+      });
+
+      if (!user) {
+        throw new Error('User not found');
+      }
+
+      // Update quiz with finish time
+      const updatedQuiz = await prisma.quiz.update({
+        where: { id: quizId },
+        data: {
+          finished_at: new Date()
+        },
+        select: {
+          id: true,
+          start_time: true,
+          finished_at: true,
+          title: true,
+          // Add other fields you might need
+        }
+      });
+
+      return updatedQuiz;
+    },
+
+    resetQuizFinishedAt: async (_: any, { quizId }: { quizId: number }, { prisma, session }: Context) => {
+      // Ensure user is authenticated
+      if (!session?.user?.email) {
+        throw new Error('Not authenticated');
+      }
+
+      // Find the user
+      const user = await prisma.user.findUnique({
+        where: { email: session.user.email }
+      });
+
+      if (!user) {
+        throw new Error('User not found');
+      }
+
+      // Update quiz by resetting finished_at
+      const updatedQuiz = await prisma.quiz.update({
+        where: { id: quizId },
+        data: {
+          finished_at: null
+        },
+        select: {
+          id: true,
+          start_time: true,
+          finished_at: true,
+          title: true
+        }
+      });
+
+      return updatedQuiz;
     }
   }
 } 
