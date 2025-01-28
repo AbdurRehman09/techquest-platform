@@ -149,15 +149,47 @@ export const resolvers = {
     quizDetails: async (_: any, { quizId }: { quizId: number }, context: Context) => {
       const quiz = await prisma.quiz.findUnique({
         where: { id: quizId },
-        include: {
+        select: {
+          id: true,
+          duration: true,
+          numberOfQuestions: true,
+          yearStart: true,
+          yearEnd: true,
+          title: true,
+          type: true,
+          start_time: true,
+          finished_at: true,
           questions: {
-            include: {
-              explanations: true
+            select: {
+              id: true,
+              description: true,
+              difficulty: true,
+              explanations: {
+                select: {
+                  id: true,
+                  feedback: true
+                }
+              }
             }
           },
-          topic: true,
-          subject: true,
-          owner: true
+          topic: {
+            select: {
+              id: true,
+              name: true
+            }
+          },
+          subject: {
+            select: {
+              id: true,
+              name: true
+            }
+          },
+          owner: {
+            select: {
+              id: true,
+              role: true
+            }
+          }
         }
       });
 
@@ -216,6 +248,18 @@ export const resolvers = {
       });
       return user;
     },
+
+    quizQuestions: async (_: any, { quizId }: { quizId: number }, { prisma }: Context) => {
+      const quiz = await prisma.quiz.findUnique({
+        where: { id: quizId },
+        include: {
+          questions: true
+        }
+      });
+      
+      if (!quiz) throw new Error('Quiz not found');
+      return quiz.questions;
+    }
   },
 
   Mutation: {
@@ -450,6 +494,104 @@ export const resolvers = {
         console.error('Error deleting quiz:', error);
         throw error;
       }
+    },
+
+    startQuiz: async (_: any, { quizId }: { quizId: number }, { prisma, session }: Context) => {
+      // Ensure user is authenticated
+      if (!session?.user?.email) {
+        throw new Error('Not authenticated');
+      }
+
+      // Find the user
+      const user = await prisma.user.findUnique({
+        where: { email: session.user.email }
+      });
+
+      if (!user) {
+        throw new Error('User not found');
+      }
+
+      // Update quiz with start time
+      const updatedQuiz = await prisma.quiz.update({
+        where: { id: quizId },
+        data: {
+          start_time: new Date()
+        },
+        select: {
+          id: true,
+          start_time: true,
+          finished_at: true,
+          title: true,
+          // Add other fields you might need
+        }
+      });
+
+      return updatedQuiz;
+    },
+
+    finishQuiz: async (_: any, { quizId }: { quizId: number }, { prisma, session }: Context) => {
+      // Ensure user is authenticated
+      if (!session?.user?.email) {
+        throw new Error('Not authenticated');
+      }
+
+      // Find the user
+      const user = await prisma.user.findUnique({
+        where: { email: session.user.email }
+      });
+
+      if (!user) {
+        throw new Error('User not found');
+      }
+
+      // Update quiz with finish time
+      const updatedQuiz = await prisma.quiz.update({
+        where: { id: quizId },
+        data: {
+          finished_at: new Date()
+        },
+        select: {
+          id: true,
+          start_time: true,
+          finished_at: true,
+          title: true,
+          // Add other fields you might need
+        }
+      });
+
+      return updatedQuiz;
+    },
+
+    resetQuizFinishedAt: async (_: any, { quizId }: { quizId: number }, { prisma, session }: Context) => {
+      // Ensure user is authenticated
+      if (!session?.user?.email) {
+        throw new Error('Not authenticated');
+      }
+
+      // Find the user
+      const user = await prisma.user.findUnique({
+        where: { email: session.user.email }
+      });
+
+      if (!user) {
+        throw new Error('User not found');
+      }
+
+      // Update quiz by resetting finished_at
+      const updatedQuiz = await prisma.quiz.update({
+        where: { id: quizId },
+        data: {
+          finished_at: null
+        },
+        select: {
+          id: true,
+          start_time: true,
+          finished_at: true,
+          title: true
+        }
+      });
+
+      return updatedQuiz;
     }
   }
 } 

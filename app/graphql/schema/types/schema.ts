@@ -75,6 +75,8 @@ export const typeDefs = gql`
     owner: User!
     questions: [Question!]!
     assignments: [QuizAssignment!]!
+    start_time: DateTime
+    finished_at: DateTime
   }
 
   enum QuizType {
@@ -115,11 +117,15 @@ export const typeDefs = gql`
     assignedQuizzes(userId: Int!): [QuizAssignment!]!
     user(id: Int!): User
     getUserByEmail(email: String!): User
+    quizQuestions(quizId: Int!): [Question!]!
   }
 
   type Mutation {
     createQuiz(input: CreateQuizInput!): Quiz!
     claimQuizAssignment(shareableLink: String!): QuizAssignment!
     deleteQuiz(quizId: Int!): Boolean!
+    startQuiz(quizId: Int!): Quiz!
+    finishQuiz(quizId: Int!): Quiz!
+    resetQuizFinishedAt(quizId: Int!): Quiz!
   }
-` 
+`

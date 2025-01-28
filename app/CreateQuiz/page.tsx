@@ -49,10 +49,7 @@ const CreateQuiz = () => {
     const [difficulty, setDifficulty] = useState('easy');
     const [yearRange, setYearRange] = useState([2015, 2024]);
     const [numQuestions, setNumQuestions] = useState(10);
-    const [timerEnabled, setTimerEnabled] = useState(false);
-    const [timePerQuestion, setTimePerQuestion] = useState(1);
     const [totalTime, setTotalTime] = useState(30);
-    const [timerType, setTimerType] = useState('perQuestion');
 
     // GraphQL hooks
     const { data: topicsData, loading: topicsLoading } = useQuery(GET_TOPICS, {
@@ -89,10 +86,6 @@ const CreateQuiz = () => {
             return;
         }
 
-        const duration = timerType === 'perQuestion'
-            ? timePerQuestion
-            : totalTime;
-
         try {
             await createQuiz({
                 variables: {
@@ -100,7 +93,7 @@ const CreateQuiz = () => {
                         topicId: selectedTopic,
                         name: quizName,
                         difficulty,
-                        duration,
+                        duration: totalTime,
                         numberOfQuestions: numQuestions,
                         yearStart: yearRange[0],
                         yearEnd: yearRange[1]
@@ -204,59 +197,21 @@ const CreateQuiz = () => {
                                     </div>
                                 </div>
 
-                                {/* Timer Settings Section */}
+                                {/* Timer Settings Section - Simplified */}
                                 <div className="bg-white p-4 rounded-lg shadow">
-                                    <div className="flex items-center justify-between mb-4">
-                                        <Title level={5} className="mb-0">Timer Settings</Title>
-                                        <Switch
-                                            checked={timerEnabled}
-                                            onChange={setTimerEnabled}
-                                            className="bg-gray-300"
-                                        />
-                                    </div>
-
-                                    {timerEnabled && (
-                                        <div className="space-y-4">
-                                            <div>
-                                                <Radio.Group
-                                                    value={timerType}
-                                                    onChange={(e) => setTimerType(e.target.value)}
-                                                    className="flex flex-col space-y-2"
-                                                >
-                                                    <Radio value="perQuestion">
-                                                        Time per question
-                                                    </Radio>
-                                                    <Radio value="totalTime">
-                                                        Total quiz time
-                                                    </Radio>
-                                                </Radio.Group>
-                                            </div>
-
-                                            {timerType === 'perQuestion' ? (
-                                                <div className="flex items-center space-x-2">
-                                                    <InputNumber
-                                                        min={1}
-                                                        max={10}
-                                                        value={timePerQuestion}
-                                                        onChange={(value) => setTimePerQuestion(value || 0)}
-                                                        className="w-24"
-                                                    />
-                                                    <span>minutes per question</span>
-                                                </div>
-                                            ) : (
-                                                <div className="flex items-center space-x-2">
-                                                    <InputNumber
-                                                        min={5}
-                                                        max={180}
-                                                        value={totalTime}
-                                                        onChange={(value) => setTotalTime(value || 0)}
-                                                        className="w-24"
-                                                    />
-                                                    <span>minutes total</span>
-                                                </div>
-                                            )}
+                                    <div className="mb-4">
+                                        <Title level={5}>Total Quiz Duration</Title>
+                                        <div className="flex items-center space-x-2">
+                                            <InputNumber
+                                                min={10}
+                                                max={180}
+                                                value={totalTime}
+                                                onChange={(value) => setTotalTime(value || 30)}
+                                                className="w-24"
+                                            />
+                                            <span>minutes</span>
                                         </div>
-                                    )}
+                                    </div>
                                 </div>
                             </div>
                         </div>

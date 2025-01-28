@@ -1,8 +1,8 @@
 'use client'
 import React, { useState } from 'react';
-import { Typography, Button, Card, Row, Col, Empty } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined } from '@ant-design/icons';
-import { gql, useQuery } from '@apollo/client';
+import { Typography, Button, Card, Row, message, Col, Empty, Tooltip } from 'antd';
+import { PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined, CodeOutlined } from '@ant-design/icons';
+import { gql, useMutation, useQuery } from '@apollo/client';
 import { useRouter } from 'next/navigation';
 import AssignQuizModal from '../AssignQuizModal/page';
 import { useSession } from 'next-auth/react';
@@ -27,6 +27,8 @@ const GET_USER_QUIZZES = gql`
       }
       yearStart
       yearEnd
+      start_time
+      finished_at
     }
     user(id: $userId) {
       role
@@ -52,10 +54,23 @@ const GET_ASSIGNED_QUIZZES = gql`
         yearStart
         yearEnd
         type
+        start_time
+        finished_at
       }
     }
   }
 `;
+const RESET_FINISHED_AT = gql`
+  mutation ResetQuizFinishedAt($quizId: Int!) {
+    resetQuizFinishedAt(quizId: $quizId) {
+      id
+      start_time
+      finished_at
+      title
+    }
+  }
+`;
+
 
 interface AssignedQuizData {
   id: number;
@@ -75,7 +90,9 @@ interface Quiz {
   };
   yearStart: number;
   yearEnd: number;
-  type?: 'REGULAR' | 'ASSIGNED';
+  type: 'REGULAR' | 'ASSIGNED';
+  start_time: Date | null;
+  finished_at: Date | null;
 }
 
 interface QuizzesListProps {
@@ -89,12 +106,13 @@ const QuizzesList: React.FC<QuizzesListProps> = ({
   showAssignButton = false,
   type = 'REGULAR',
   userId,
-  showCreateButton=true
+  showCreateButton = true
 }) => {
   const router = useRouter();
   const { data: session } = useSession();
   const [assignModalVisible, setAssignModalVisible] = useState(false);
   const [selectedQuizId, setSelectedQuizId] = useState<number | null>(null);
+  const [resetFinishedAt] = useMutation(RESET_FINISHED_AT);
 
   // Get quizzes based on type
   const { loading, error, data, refetch } = useQuery(
@@ -104,7 +122,6 @@ const QuizzesList: React.FC<QuizzesListProps> = ({
       skip: !userId,
     }
   );
-
   if (loading) return <div>Loading...</div>;
   if (error) return <div>Error: {error.message}</div>;
 
@@ -112,6 +129,9 @@ const QuizzesList: React.FC<QuizzesListProps> = ({
   const quizzes: Quiz[] = type === 'ASSIGNED'
     ? data?.assignedQuizzes?.map((a: AssignedQuizData) => a.quizzes) || []
     : data?.userQuizzes || [];
+
+  // Determine user role from data or session
+  const userRole = data?.user?.role || session?.user?.role;
 
   const handleCreateQuiz = () => {
     router.push('/CreateQuiz');
@@ -126,7 +146,43 @@ const QuizzesList: React.FC<QuizzesListProps> = ({
     setAssignModalVisible(true);
   };
 
+  const getQuizButtonText = (quiz: Quiz) => {
+    if (quiz?.start_time === null) return 'Start Quiz';
+    if (quiz?.finished_at === null) return 'Resume Quiz';
+    return 'Restart Quiz';
+  };
 
+  const isQuizRestartable = (quiz: Quiz) => {
+    return type === 'REGULAR' && quiz.finished_at !== null;
+  };
+
+  const handleStartQuiz = async (quiz: Quiz) => {
+    if (!quiz) return;
+
+    if (quiz.type === 'ASSIGNED' && quiz.start_time && quiz.finished_at) {
+      message.warning('This assigned quiz has already been submitted');
+      return;
+    }
+
+    // If it's a restart scenario for a regular quiz
+    if (getQuizButtonText(quiz) === 'Restart Quiz') {
+      try {
+        // Reset finished_at before starting
+        await resetFinishedAt({ 
+          variables: { quizId: quiz.id },
+          onError: (error) => {
+            console.error('Error resetting finished_at:', error);
+            message.error('Failed to reset quiz');
+          }
+        });
+      } catch (error) {
+        console.error('Reset mutation error:', error);
+        return;
+      }
+    }
+
+    router.push(`/compiler?quizId=${quiz.id}`);
+  };
 
   if (!userId) return <div>Please log in to view quizzes</div>;
 
@@ -141,10 +197,10 @@ const QuizzesList: React.FC<QuizzesListProps> = ({
           icon={<PlusOutlined />}
           onClick={handleCreateQuiz}
           className="mb-4"
-      >
-        Create new quiz
-      </Button>
- )}
+        >
+          Create new quiz
+        </Button>
+      )}
 
 
 
@@ -166,6 +222,24 @@ const QuizzesList: React.FC<QuizzesListProps> = ({
               >
                 Show Details
               </Button>
+              {userRole !== 'TEACHER' && (
+                <Tooltip
+                  title={quiz.start_time && quiz.finished_at ? "Quiz already submitted" : undefined}
+                >
+                  <Button
+                    className="bg-gray-100"
+                    icon={<CodeOutlined />}
+                    onClick={() => handleStartQuiz(quiz)}
+                    disabled={
+                      quiz.start_time !== null &&
+                      quiz.finished_at !== null &&
+                      type === 'ASSIGNED'
+                    }
+                  >
+                    {getQuizButtonText(quiz)}
+                  </Button>
+                </Tooltip>
+              )}
               {showAssignButtonForQuiz && (
                 <Button
                   style={{ backgroundColor: "#c5e4f0" }}
@@ -176,8 +250,8 @@ const QuizzesList: React.FC<QuizzesListProps> = ({
                 </Button>
               )}
               {type === 'REGULAR' && (
-                <DeleteQuizButton 
-                  quizId={quiz.id} 
+                <DeleteQuizButton
+                  quizId={quiz.id}
                   userId={userId!}
                   onDelete={() => {
                     refetch();
@@ -194,7 +268,7 @@ const QuizzesList: React.FC<QuizzesListProps> = ({
               <Text>Questions: {quiz.numberOfQuestions}</Text>
             </Col>
             <Col span={8}>
-              Duration: {quiz.duration === 30 ? `${quiz.duration} mins` : `${quiz.numberOfQuestions * quiz.duration} mins`}
+              Duration: {quiz.duration} mins
             </Col>
             <Col span={24}>
               <Text>Year Range: {quiz.yearStart} - {quiz.yearEnd}</Text>
