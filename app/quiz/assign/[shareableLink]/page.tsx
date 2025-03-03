@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { gql, useMutation } from '@apollo/client';
-import { message, Spin } from 'antd';
-import { useSession } from 'next-auth/react';
+import { useEffect, useState, useRef } from "react";
+import { useRouter } from "next/navigation";
+import { gql, useMutation } from "@apollo/client";
+import { message, Spin, Result, Button } from "antd";
+import { useSession } from "next-auth/react";
 
 const VERIFY_AND_CLAIM_QUIZ = gql`
   mutation VerifyAndClaimQuiz($shareableLink: String!) {
@@ -29,74 +29,126 @@ const VERIFY_AND_CLAIM_QUIZ = gql`
   }
 `;
 
-export default function QuizAssignmentPage({ params }: { params: { shareableLink: string } }) {
+export default function QuizAssignmentPage({
+  params,
+}: {
+  params: { shareableLink: string };
+}) {
   const router = useRouter();
   const { data: session, status } = useSession();
   const [error, setError] = useState<string | null>(null);
+  const [roleError, setRoleError] = useState<boolean>(false);
+  const messageShown = useRef(false);
 
   const [verifyAndClaimQuiz, { loading }] = useMutation(VERIFY_AND_CLAIM_QUIZ, {
     onCompleted: (data) => {
-      if (data.claimQuizAssignment) {
-        message.success(`Quiz "${data.claimQuizAssignment.quizzes.title}" has been assigned to you!`);
-        router.push('/Practise?tab=assigned');
+      if (data.claimQuizAssignment && !messageShown.current) {
+        messageShown.current = true;
+        message.success(
+          `Quiz "${data.claimQuizAssignment.quizzes.title}" has been assigned to you!`
+        );
+        router.push("/Practise?tab=assigned");
       }
     },
     onError: (error) => {
       // Check if error is about already being assigned
-      if (error.message.includes('already been assigned')) {
-        message.info('You have already been assigned this quiz. Redirecting to practice page...');
-        setTimeout(() => router.push('/Practise?tab=assigned'), 2000);
+      if (
+        error.message.includes("already been assigned") &&
+        !messageShown.current
+      ) {
+        messageShown.current = true;
+        message.info(
+          "You have already been assigned this quiz. Redirecting to your assigned quizzes."
+        );
+        setTimeout(() => {
+          router.push("/Practise?tab=assigned");
+        }, 2000);
       } else {
         setError(error.message);
-        message.error(error.message);
-        // Redirect to practice page after showing error
-        setTimeout(() => router.push('/Practise'), 3000);
       }
-    }
+    },
   });
 
   useEffect(() => {
-    const verifyAssignment = async () => {
-      if (status === 'loading') return;
+    if (status === "loading") return;
 
-      if (!session?.user) {
-        setError('Please login to access this quiz');
-        router.push('/login');
-        return;
-      }
+    if (!session) {
+      router.push(`/login?callbackUrl=/quiz/assign/${params.shareableLink}`);
+      return;
+    }
 
-      try {
-        await verifyAndClaimQuiz({
-          variables: { shareableLink: params.shareableLink }
-        });
-      } catch (error) {
-        // Error will be handled by onError callback
-      }
-    };
+    // Check if user is a student
+    if (session.user?.role !== "STUDENT") {
+      setRoleError(true);
+      return;
+    }
 
-    verifyAssignment();
-  }, [params.shareableLink, verifyAndClaimQuiz, session, status, router]);
+    if (!messageShown.current) {
+      verifyAssignment();
+    }
+  }, [session, status]);
 
-  if (loading) {
+  const verifyAssignment = async () => {
+    try {
+      await verifyAndClaimQuiz({
+        variables: {
+          shareableLink: params.shareableLink,
+        },
+      });
+    } catch (error) {
+      // Error is handled in the onError callback
+    }
+  };
+
+  if (status === "loading") {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Spin size="large" tip="Verifying quiz assignment..." />
+      <div className="flex justify-center items-center h-screen">
+        <Spin size="large" tip="Loading..." />
       </div>
+    );
+  }
+
+  if (roleError) {
+    return (
+      <Result
+        status="error"
+        title="Access Denied"
+        subTitle="Teachers cannot use quiz assignment links. Only students can access assigned quizzes."
+        extra={[
+          <Button
+            type="primary"
+            key="dashboard"
+            onClick={() => router.push("/CommonDashboard")}
+          >
+            Go to Dashboard
+          </Button>,
+        ]}
+      />
     );
   }
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen">
-        <div className="text-red-500 text-lg mb-4">{error}</div>
-        <div className="text-gray-500">Redirecting...</div>
-      </div>
+      <Result
+        status="error"
+        title="Failed to verify quiz assignment"
+        subTitle={error}
+        extra={[
+          <Button
+            type="primary"
+            key="dashboard"
+            onClick={() => router.push("/CommonDashboard")}
+          >
+            Go to Dashboard
+          </Button>,
+        ]}
+      />
     );
   }
 
   return (
-    <div className="flex items-center justify-center min-h-screen">
-      <Spin size="large" tip="Processing quiz assignment..." />
+    <div className="flex justify-center items-center h-screen">
+      <Spin size="large" tip="Verifying quiz assignment..." />
     </div>
   );
-} 
+}
