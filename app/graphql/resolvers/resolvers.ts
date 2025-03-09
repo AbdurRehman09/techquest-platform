@@ -1,8 +1,8 @@
-import { PrismaClient, Prisma, Question, Quiz } from '@prisma/client'
-import { nanoid } from 'nanoid';
-import crypto from 'crypto';
-import { DateTimeResolver } from '../scalars/DateTime';
-import { title } from 'process';
+import { PrismaClient, Prisma, Question, Quiz } from "@prisma/client";
+import { nanoid } from "nanoid";
+import crypto from "crypto";
+import { DateTimeResolver } from "../scalars/DateTime";
+import { title } from "process";
 
 interface Context {
   prisma: PrismaClient;
@@ -12,49 +12,49 @@ interface Context {
 
 // Add all missing interfaces
 interface TopicsArgs {
-  subjectId: number
+  subjectId: number;
 }
 
 interface QuestionsArgs {
-  subjectId: number
-  difficulty?: string
+  subjectId: number;
+  difficulty?: string;
 }
 
 interface TopicArgs {
-  topicId: number
+  topicId: number;
 }
 
 interface QuestionExplanationsArgs {
-  questionId: number
+  questionId: number;
 }
 
 interface CreateQuizInput {
-  topicId: number
-  difficulty: string
-  duration: number
-  numberOfQuestions: number
-  yearStart: number
-  yearEnd: number
-  name: string
+  topicId: number;
+  difficulty: string;
+  duration: number;
+  numberOfQuestions: number;
+  yearStart: number;
+  yearEnd: number;
+  name: string;
 }
 
 interface QuizCreateData extends Prisma.QuizCreateInput {
-  numberOfQuestions: number
-  yearStart: number
-  yearEnd: number
+  numberOfQuestions: number;
+  yearStart: number;
+  yearEnd: number;
 }
 
-const prisma = new PrismaClient()
+const prisma = new PrismaClient();
 
 // Define custom types to match Prisma schema
 type QuestionWithYear = Question & {
-  year: number
-}
+  year: number;
+};
 
 type QuizWithYearRange = Quiz & {
-  yearStart: number
-  yearEnd: number
-}
+  yearStart: number;
+  yearEnd: number;
+};
 
 export const resolvers = {
   DateTime: DateTimeResolver,
@@ -68,7 +68,7 @@ export const resolvers = {
           questions: true,
           customQuestions: true,
         },
-      })
+      });
     },
 
     topics: async (_: any, { subjectId }: TopicsArgs, context: Context) => {
@@ -78,10 +78,14 @@ export const resolvers = {
           subject: true,
           quizzes: true,
         },
-      })
+      });
     },
 
-    questions: async (_: any, { subjectId, difficulty }: QuestionsArgs, context: Context) => {
+    questions: async (
+      _: any,
+      { subjectId, difficulty }: QuestionsArgs,
+      context: Context
+    ) => {
       return await prisma.question.findMany({
         where: {
           subjectId,
@@ -91,16 +95,20 @@ export const resolvers = {
           subject: true,
           explanations: true,
         },
-      })
+      });
     },
 
-    questionsByTopic: async (_: any, { topicId }: TopicArgs, context: Context) => {
+    questionsByTopic: async (
+      _: any,
+      { topicId }: TopicArgs,
+      context: Context
+    ) => {
       const topic = await prisma.topic.findUnique({
         where: { id: topicId },
         include: { subject: true },
-      })
+      });
 
-      if (!topic) throw new Error('Topic not found')
+      if (!topic) throw new Error("Topic not found");
 
       return await prisma.question.findMany({
         where: {
@@ -110,10 +118,14 @@ export const resolvers = {
           subject: true,
           explanations: true,
         },
-      })
+      });
     },
 
-    customQuestions: async (_: any, { subjectId }: Partial<TopicsArgs>, context: Context) => {
+    customQuestions: async (
+      _: any,
+      { subjectId }: Partial<TopicsArgs>,
+      context: Context
+    ) => {
       return await prisma.customQuestion.findMany({
         where: {
           ...(subjectId && { subjectId }),
@@ -122,10 +134,14 @@ export const resolvers = {
           subject: true,
           author: true,
         },
-      })
+      });
     },
 
-    questionExplanations: async (_: any, { questionId }: QuestionExplanationsArgs, context: Context) => {
+    questionExplanations: async (
+      _: any,
+      { questionId }: QuestionExplanationsArgs,
+      context: Context
+    ) => {
       return await prisma.questionExplanation.findMany({
         where: {
           questionId,
@@ -133,20 +149,23 @@ export const resolvers = {
         include: {
           question: true,
         },
-      })
+      });
     },
 
-    
     topicsBySubject: async (_: any, { subjectId }: { subjectId: number }) => {
       return await prisma.topic.findMany({
         where: { subjectId },
         include: {
           subject: true,
         },
-      })
+      });
     },
 
-    quizDetails: async (_: any, { quizId }: { quizId: number }, context: Context) => {
+    quizDetails: async (
+      _: any,
+      { quizId }: { quizId: number },
+      context: Context
+    ) => {
       const quiz = await prisma.quiz.findUnique({
         where: { id: quizId },
         select: {
@@ -167,67 +186,75 @@ export const resolvers = {
               explanations: {
                 select: {
                   id: true,
-                  feedback: true
-                }
-              }
-            }
+                  feedback: true,
+                },
+              },
+            },
           },
           topic: {
             select: {
               id: true,
-              name: true
-            }
+              name: true,
+            },
           },
           subject: {
             select: {
               id: true,
-              name: true
-            }
+              name: true,
+            },
           },
           owner: {
             select: {
               id: true,
-              role: true
-            }
-          }
-        }
+              role: true,
+            },
+          },
+        },
       });
 
-      if (!quiz) throw new Error('Quiz not found');
+      if (!quiz) throw new Error("Quiz not found");
 
       return quiz;
     },
 
-    userQuizzes: async (_: any, { userId }: { userId: number }, context: Context) => {
+    userQuizzes: async (
+      _: any,
+      { userId }: { userId: number },
+      context: Context
+    ) => {
       return await prisma.quiz.findMany({
         where: {
-          quizOwnedBy: userId
+          quizOwnedBy: userId,
         },
         include: {
           topic: true,
-          subject: true
-        }
+          subject: true,
+        },
       });
     },
 
-    assignedQuizzes: async (_: any, { userId }: { userId: number }, { prisma }: Context) => {
+    assignedQuizzes: async (
+      _: any,
+      { userId }: { userId: number },
+      { prisma }: Context
+    ) => {
       return prisma.quiz_assignments.findMany({
         where: {
           users: {
             some: {
-              id: userId
-            }
-          }
+              id: userId,
+            },
+          },
         },
         include: {
           quizzes: {
             include: {
               subject: true,
-              topic: true
-            }
+              topic: true,
+            },
           },
-          users: true
-        }
+          users: true,
+        },
       });
     },
 
@@ -238,52 +265,95 @@ export const resolvers = {
           id: true,
           role: true,
           // ... other fields
-        }
+        },
       });
     },
 
     getUserByEmail: async (_: any, { email }: { email: string }) => {
       const user = await prisma.user.findUnique({
-        where: { email }
+        where: { email },
       });
       return user;
     },
 
-    quizQuestions: async (_: any, { quizId }: { quizId: number }, { prisma }: Context) => {
+    quizQuestions: async (
+      _: any,
+      { quizId }: { quizId: number },
+      { prisma }: Context
+    ) => {
       const quiz = await prisma.quiz.findUnique({
         where: { id: quizId },
         include: {
-          questions: true
-        }
+          questions: true,
+        },
       });
-      
-      if (!quiz) throw new Error('Quiz not found');
+
+      if (!quiz) throw new Error("Quiz not found");
       return quiz.questions;
-    }
+    },
+
+    // New resolver to get quiz owner's email
+    quizOwnerEmail: async (
+      _: any,
+      { quizId }: { quizId: number },
+      { prisma }: Context
+    ) => {
+      const quiz = await prisma.quiz.findUnique({
+        where: { id: quizId },
+        select: {
+          quizOwnedBy: true,
+        },
+      });
+
+      if (!quiz) throw new Error("Quiz not found");
+
+      const user = await prisma.user.findUnique({
+        where: { id: quiz.quizOwnedBy },
+        select: {
+          email: true,
+        },
+      });
+
+      if (!user) throw new Error("Quiz owner not found");
+
+      return user.email;
+    },
   },
 
   Mutation: {
-    createQuiz: async (_: any, { input }: { input: CreateQuizInput }, context: Context) => {
+    createQuiz: async (
+      _: any,
+      { input }: { input: CreateQuizInput },
+      context: Context
+    ) => {
       if (!context.session?.user?.email) {
-        throw new Error('User must be authenticated');
+        throw new Error("User must be authenticated");
       }
 
       const dbUser = await prisma.user.findUnique({
-        where: { email: context.session.user.email }
+        where: { email: context.session.user.email },
       });
 
       if (!dbUser) {
-        throw new Error('User not found');
+        throw new Error("User not found");
       }
 
-      const { topicId, difficulty, duration, numberOfQuestions, yearStart, yearEnd, name } = input;
+      const {
+        topicId,
+        difficulty,
+        duration,
+        numberOfQuestions,
+        yearStart,
+        yearEnd,
+        name,
+      } = input;
 
       const topic = await prisma.topic.findUnique({
         where: { id: topicId },
-        select: { subjectId: true }
+        select: { subjectId: true },
       });
 
-      if (!topic) throw new Error('Topic not found');
+      if (!topic) throw new Error("Topic not found");
 
       // Get questions based on criteria
       const availableQuestions = await prisma.question.findMany({
@@ -291,16 +361,16 @@ export const resolvers = {
           subject: {
             topics: {
               some: {
-                id: topicId
-              }
-            }
+                id: topicId,
+              },
+            },
           },
           difficulty,
           year: {
             gte: yearStart,
-            lte: yearEnd
-          }
-        }
+            lte: yearEnd,
+          },
+        },
       });
 
       if (availableQuestions.length === 0) {
@@ -324,8 +394,8 @@ export const resolvers = {
           numberOfQuestions: selectedQuestions.length,
           yearStart,
           yearEnd,
-          title: name
-        }
+          title: name,
+        },
       });
 
       // Connect questions to quiz in a separate step
@@ -333,9 +403,9 @@ export const resolvers = {
         where: { id: quiz.id },
         data: {
           questions: {
-            connect: selectedQuestions.map(q => ({ id: q.id }))
-          }
-        }
+            connect: selectedQuestions.map((q) => ({ id: q.id })),
+          },
+        },
       });
 
       // Fetch the complete quiz with all relations
@@ -347,35 +417,39 @@ export const resolvers = {
           owner: {
             select: {
               id: true,
-              role: true
-            }
+              role: true,
+            },
           },
           questions: {
             include: {
-              explanations: true
-            }
-          }
-        }
+              explanations: true,
+            },
+          },
+        },
       });
 
       if (!completeQuiz) {
-        throw new Error('Failed to create quiz');
+        throw new Error("Failed to create quiz");
       }
 
       return completeQuiz;
     },
 
-    claimQuizAssignment: async (_: any, { shareableLink }: { shareableLink: string }, { prisma, session }: Context) => {
+    claimQuizAssignment: async (
+      _: any,
+      { shareableLink }: { shareableLink: string },
+      { prisma, session }: Context
+    ) => {
       if (!session?.user?.email) {
-        throw new Error('Please login to access this quiz');
+        throw new Error("Please login to access this quiz");
       }
 
       const dbUser = await prisma.user.findUnique({
-        where: { email: session.user.email }
+        where: { email: session.user.email },
       });
 
       if (!dbUser) {
-        throw new Error('User not found');
+        throw new Error("User not found");
       }
 
       // Check if assignment exists
@@ -385,15 +459,15 @@ export const resolvers = {
           quizzes: {
             include: {
               subject: true,
-              topic: true
-            }
+              topic: true,
+            },
           },
-          users: true
-        }
+          users: true,
+        },
       });
 
       if (!assignment) {
-        throw new Error('Invalid quiz link');
+        throw new Error("Invalid quiz link");
       }
 
       // Check if user has already been assigned this quiz
@@ -402,47 +476,51 @@ export const resolvers = {
           id: assignment.id,
           users: {
             some: {
-              id: dbUser.id
-            }
-          }
-        }
+              id: dbUser.id,
+            },
+          },
+        },
       });
 
       if (existingAssignment) {
-        throw new Error('You have already been assigned this quiz');
+        throw new Error("You have already been assigned this quiz");
       }
 
       // Update quiz type and connect student
       await prisma.quiz.update({
         where: { id: assignment.quizzes.id },
-        data: { type: 'ASSIGNED' }
+        data: { type: "ASSIGNED" },
       });
 
       const updatedAssignment = await prisma.quiz_assignments.update({
         where: { id: assignment.id },
         data: {
           users: {
-            connect: { id: dbUser.id }
-          }
+            connect: { id: dbUser.id },
+          },
         },
         include: {
           quizzes: {
             include: {
               subject: true,
-              topic: true
-            }
+              topic: true,
+            },
           },
-          users: true
-        }
+          users: true,
+        },
       });
 
       return updatedAssignment;
     },
 
-    deleteQuiz: async (_: any, { quizId }: { quizId: number }, { prisma, session }: Context) => {
+    deleteQuiz: async (
+      _: any,
+      { quizId }: { quizId: number },
+      { prisma, session }: Context
+    ) => {
       try {
         if (!session?.user?.email) {
-          throw new Error('Not authenticated');
+          throw new Error("Not authenticated");
         }
 
         // Get the quiz with its relationships and check ownership
@@ -451,71 +529,84 @@ export const resolvers = {
           include: {
             quiz_assignments: {
               include: {
-                users: true
-              }
+                users: true,
+              },
             },
             questions: true,
-            owner: true
-          }
+            owner: true,
+          },
         });
 
         if (!quiz) {
-          throw new Error('Quiz not found');
+          throw new Error("Quiz not found");
         }
 
         // Check if user is the owner
         if (quiz.owner.email !== session.user.email) {
-          throw new Error('You can only delete your own quizzes');
+          throw new Error("You can only delete your own quizzes");
         }
 
         // Check if quiz is assigned to any student
-        if (quiz.quiz_assignments.some(assignment => assignment.users.length > 0)) {
-          throw new Error('Cannot delete quiz as it has been assigned to students');
+        if (
+          quiz.quiz_assignments.some(
+            (assignment) => assignment.users.length > 0
+          )
+        ) {
+          throw new Error(
+            "Cannot delete quiz as it has been assigned to students"
+          );
         }
 
         // Delete with increased timeout and optimized operations
-        await prisma.$transaction(async (tx) => {
-          // 1. Delete all quiz assignments in one go
-          await tx.quiz_assignments.deleteMany({
-            where: { quizId }
-          });
+        await prisma.$transaction(
+          async (tx) => {
+            // 1. Delete all quiz assignments in one go
+            await tx.quiz_assignments.deleteMany({
+              where: { quizId },
+            });
 
-          // 2. Delete the quiz (this will automatically handle question relationships)
-          await tx.quiz.delete({
-            where: { id: quizId }
-          });
-        }, {
-          timeout: 10000, // Increase timeout to 10 seconds
-          maxWait: 15000  // Maximum time to wait for transaction
-        });
+            // 2. Delete the quiz (this will automatically handle question relationships)
+            await tx.quiz.delete({
+              where: { id: quizId },
+            });
+          },
+          {
+            timeout: 10000, // Increase timeout to 10 seconds
+            maxWait: 15000, // Maximum time to wait for transaction
+          }
+        );
 
         return true;
       } catch (error) {
-        console.error('Error deleting quiz:', error);
+        console.error("Error deleting quiz:", error);
         throw error;
       }
     },
 
-    startQuiz: async (_: any, { quizId }: { quizId: number }, { prisma, session }: Context) => {
+    startQuiz: async (
+      _: any,
+      { quizId }: { quizId: number },
+      { prisma, session }: Context
+    ) => {
       // Ensure user is authenticated
       if (!session?.user?.email) {
-        throw new Error('Not authenticated');
+        throw new Error("Not authenticated");
       }
 
       // Find the user
       const user = await prisma.user.findUnique({
-        where: { email: session.user.email }
+        where: { email: session.user.email },
       });
 
       if (!user) {
-        throw new Error('User not found');
+        throw new Error("User not found");
       }
 
       // Update quiz with start time
       const updatedQuiz = await prisma.quiz.update({
         where: { id: quizId },
         data: {
-          start_time: new Date()
+          start_time: new Date(),
         },
         select: {
           id: true,
@@ -523,32 +614,36 @@ export const resolvers = {
           finished_at: true,
           title: true,
           // Add other fields you might need
-        }
+        },
       });
 
       return updatedQuiz;
     },
 
-    finishQuiz: async (_: any, { quizId }: { quizId: number }, { prisma, session }: Context) => {
+    finishQuiz: async (
+      _: any,
+      { quizId }: { quizId: number },
+      { prisma, session }: Context
+    ) => {
       // Ensure user is authenticated
       if (!session?.user?.email) {
-        throw new Error('Not authenticated');
+        throw new Error("Not authenticated");
       }
 
       // Find the user
       const user = await prisma.user.findUnique({
-        where: { email: session.user.email }
+        where: { email: session.user.email },
       });
 
       if (!user) {
-        throw new Error('User not found');
+        throw new Error("User not found");
       }
 
       // Update quiz with finish time
       const updatedQuiz = await prisma.quiz.update({
         where: { id: quizId },
         data: {
-          finished_at: new Date()
+          finished_at: new Date(),
         },
         select: {
           id: true,
@@ -556,42 +651,46 @@ export const resolvers = {
           finished_at: true,
           title: true,
           // Add other fields you might need
-        }
+        },
       });
 
       return updatedQuiz;
     },
 
-    resetQuizFinishedAt: async (_: any, { quizId }: { quizId: number }, { prisma, session }: Context) => {
+    resetQuizFinishedAt: async (
+      _: any,
+      { quizId }: { quizId: number },
+      { prisma, session }: Context
+    ) => {
       // Ensure user is authenticated
       if (!session?.user?.email) {
-        throw new Error('Not authenticated');
+        throw new Error("Not authenticated");
       }
 
       // Find the user
       const user = await prisma.user.findUnique({
-        where: { email: session.user.email }
+        where: { email: session.user.email },
       });
 
       if (!user) {
-        throw new Error('User not found');
+        throw new Error("User not found");
       }
 
       // Update quiz by resetting finished_at
       const updatedQuiz = await prisma.quiz.update({
         where: { id: quizId },
         data: {
-          finished_at: null
+          finished_at: null,
         },
         select: {
           id: true,
           start_time: true,
           finished_at: true,
-          title: true
-        }
+          title: true,
+        },
       });
 
       return updatedQuiz;
-    }
-  }
-} 
+    },
+  },
+};

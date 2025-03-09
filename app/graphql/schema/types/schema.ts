@@ -1,4 +1,4 @@
-import { gql } from '@apollo/client'
+import { gql } from "@apollo/client";
 
 export const typeDefs = gql`
   scalar DateTime
@@ -118,6 +118,7 @@ export const typeDefs = gql`
     user(id: Int!): User
     getUserByEmail(email: String!): User
     quizQuestions(quizId: Int!): [Question!]!
+    quizOwnerEmail(quizId: Int!): String
   }
 
   type Mutation {
@@ -128,4 +129,4 @@ export const typeDefs = gql`
     finishQuiz(quizId: Int!): Quiz!
     resetQuizFinishedAt(quizId: Int!): Quiz!
   }
-`
+`;

@@ -1,20 +1,27 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useRef } from 'react';
-import { useSearchParams } from 'next/navigation';
-import { gql, useQuery, useMutation } from '@apollo/client';
+import { useState, useEffect, useRef } from "react";
+import { useSearchParams } from "next/navigation";
+import { gql, useQuery, useMutation } from "@apollo/client";
 import Editor, { OnChange } from "@monaco-editor/react";
-import dynamic from 'next/dynamic';
-import styles from './compiler.module.css';
-import Image from 'next/image';
-import { Button, Progress } from 'antd';
-import { LeftOutlined, RightOutlined } from '@ant-design/icons';
-import Split from 'split.js';
-import { useRouter } from 'next/navigation';
-import { message } from 'antd';
+import dynamic from "next/dynamic";
+import styles from "./compiler.module.css";
+import Image from "next/image";
+import { Button, Progress, Modal, Spin } from "antd";
+import {
+  LeftOutlined,
+  RightOutlined,
+  CheckCircleOutlined,
+} from "@ant-design/icons";
+import Split from "split.js";
+import { useRouter } from "next/navigation";
+import { message } from "antd";
 
 // Dynamically import Navbar to avoid SSR issues with react-select
-const CompilerNavbar = dynamic(() => import('./Compiler_Components/CompilerNavbar'), { ssr: false });
+const CompilerNavbar = dynamic(
+  () => import("./Compiler_Components/CompilerNavbar"),
+  { ssr: false }
+);
 
 const GET_QUIZ_QUESTIONS = gql`
   query GetQuizQuestions($quizId: Int!) {
@@ -23,6 +30,13 @@ const GET_QUIZ_QUESTIONS = gql`
       description
       difficulty
     }
+  }
+`;
+
+// Add new GraphQL query to get quiz owner's email
+const GET_QUIZ_OWNER_EMAIL = gql`
+  query GetQuizOwnerEmail($quizId: Int!) {
+    quizOwnerEmail(quizId: $quizId)
   }
 `;
 
@@ -62,7 +76,7 @@ const RESET_FINISHED_AT = gql`
 `;
 
 export default function CompilerPage() {
-  const [userCode, setUserCode] = useState('');
+  const [userCode, setUserCode] = useState("");
   const [userLang, setUserLang] = useState("python");
   const [userTheme, setUserTheme] = useState("vs-dark");
   const [fontSize, setFontSize] = useState(20);
@@ -78,89 +92,110 @@ export default function CompilerPage() {
   // Add new state for timer
   const [isPaused, setIsPaused] = useState(false);
 
-  const searchParams = useSearchParams();
-  const quizId = Number(searchParams?.get('quizId') || '0');
-  
-  const { loading: questionsLoading, error: questionsError, data: questionsData } = useQuery(
-    GET_QUIZ_QUESTIONS,
-    {
-      variables: { quizId },
-      skip: quizId === 0
-    }
-  );
+  // New states for code submission and evaluation
+  const [submittedQuestions, setSubmittedQuestions] = useState<{
+    [key: number]: string;
+  }>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isEvaluating, setIsEvaluating] = useState(false);
+  const [evaluationModalVisible, setEvaluationModalVisible] = useState(false);
 
-  // Fetch quiz details to get duration
-  const { loading: quizLoading, data: quizData } = useQuery(gql`
-    query GetQuizDetails($quizId: Int!) {
-      quizDetails(quizId: $quizId) {
-        duration
-      }
-    }
-  `, {
+  const searchParams = useSearchParams();
+  const quizId = Number(searchParams?.get("quizId") || "0");
+
+  const {
+    loading: questionsLoading,
+    error: questionsError,
+    data: questionsData,
+  } = useQuery(GET_QUIZ_QUESTIONS, {
     variables: { quizId },
     skip: quizId === 0,
-    onCompleted: (data) => {
-      // Set timer based on quiz duration (convert minutes to seconds)
-      setTimeLeft(data.quizDetails.duration * 60);
-    }
   });
+
+  // Query to get quiz owner's email
+  const { data: ownerData } = useQuery(GET_QUIZ_OWNER_EMAIL, {
+    variables: { quizId },
+    skip: quizId === 0,
+  });
+
+  // Fetch quiz details to get duration
+  const { loading: quizLoading, data: quizData } = useQuery(
+    gql`
+      query GetQuizDetails($quizId: Int!) {
+        quizDetails(quizId: $quizId) {
+          duration
+        }
+      }
+    `,
+    {
+      variables: { quizId },
+      skip: quizId === 0,
+      onCompleted: (data) => {
+        // Set timer based on quiz duration (convert minutes to seconds)
+        setTimeLeft(data.quizDetails.duration * 60);
+      },
+    }
+  );
 
   const questions = questionsData?.quizQuestions || [];
   const currentQuestionData = questions[currentQuestion];
 
   // Timer effect
   useEffect(() => {
-    if (timeLeft > 0 && !isPaused) {  // Check if timer is not paused
+    if (timeLeft > 0 && !isPaused) {
+      // Check if timer is not paused
       const timer = setInterval(() => {
-        setTimeLeft(prev => prev - 1);
+        setTimeLeft((prev) => prev - 1);
       }, 1000);
       return () => clearInterval(timer);
     }
-  }, [timeLeft, isPaused]);  // Add isPaused to dependencies
+  }, [timeLeft, isPaused]); // Add isPaused to dependencies
 
   // Format time function
   const formatTime = (seconds: number) => {
     const hrs = Math.floor(seconds / 3600);
     const mins = Math.floor((seconds % 3600) / 60);
     const secs = seconds % 60;
-    return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    return `${hrs.toString().padStart(2, "0")}:${mins
+      .toString()
+      .padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   };
 
   const options = {
-    fontSize: fontSize
-  }
+    fontSize: fontSize,
+  };
 
   const router = useRouter();
 
   async function compile() {
     setLoading(true);
-    if (userCode === '') {
+    if (userCode === "") {
       setLoading(false);
       return;
     }
 
     try {
-      const response = await fetch('/api/compile', {
-        method: 'POST',
+      const response = await fetch("/api/compile", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           code: userCode,
           language: userLang,
-          input: userInput
-        })
+          input: userInput,
+        }),
       });
 
       const data = await response.json();
-      
+
       if (!response.ok) {
-        throw new Error(data.error || 'Compilation failed');
+        throw new Error(data.error || "Compilation failed");
       }
 
       setUserOutput(data.stdout || data.stderr);
     } catch (error: any) {
-      console.error('Compilation error:', error);
+      console.error("Compilation error:", error);
       setUserOutput(`Error: ${error.message}`);
     } finally {
       setLoading(false);
@@ -172,20 +207,20 @@ export default function CompilerPage() {
   }
 
   const handleEditorChange: OnChange = (value) => {
-    setUserCode(value || '');
+    setUserCode(value || "");
   };
 
   // Update question content when currentQuestion changes
   useEffect(() => {
     if (currentQuestionData) {
-      setUserCode(''); // Reset code for new question
-      setUserOutput(''); // Reset output
+      setUserCode(""); // Reset code for new question
+      setUserOutput(""); // Reset output
     }
   }, [currentQuestionData]);
 
   // Add timer control functions
   const handlePauseResume = () => {
-    setIsPaused(prev => !prev);
+    setIsPaused((prev) => !prev);
   };
 
   // Add editor container ref
@@ -204,11 +239,11 @@ export default function CompilerPage() {
   useEffect(() => {
     if (editorContainerRef.current && ioContainerRef.current) {
       Split([editorContainerRef.current, ioContainerRef.current], {
-        direction: 'vertical',
+        direction: "vertical",
         sizes: [70, 30],
         minSize: [200, 200],
         gutterSize: 6,
-        cursor: 'row-resize'
+        cursor: "row-resize",
       });
     }
   }, []);
@@ -222,80 +257,191 @@ export default function CompilerPage() {
   useEffect(() => {
     if (quizId && questionsData) {
       try {
-        startQuiz({ 
+        startQuiz({
           variables: { quizId },
           // Optional: handle success/error
           onError: (error) => {
-            console.error('Error starting quiz:', error);
-          }
+            console.error("Error starting quiz:", error);
+          },
         });
       } catch (error) {
-        console.error('Mutation error:', error);
+        console.error("Mutation error:", error);
       }
     }
   }, [quizId, questionsData]);
 
-  // Update Finish Quiz button handler
-  const handleFinishQuiz = async () => {
-    try {
-      await finishQuiz({ 
-        variables: { quizId },
-        onCompleted: () => {
-          // Redirect or show completion message
-          router.push('/Practise?tab=quizzes');
-        },
-        onError: (error) => {
-          message.error('Failed to finish quiz');
-          console.error('Finish quiz error:', error);
-        }
-      });
-    } catch (error) {
-      console.error('Finish quiz mutation error:', error);
+  // Function to submit current question
+  const submitCurrentQuestion = () => {
+    if (!userCode.trim()) {
+      message.warning("Please write some code before submitting");
+      return;
     }
+
+    if (!currentQuestionData) {
+      message.error("No question selected");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    // Store the submission
+    setSubmittedQuestions((prev) => ({
+      ...prev,
+      [currentQuestionData.id]: userCode,
+    }));
+
+    // Update attempted count if this is a new submission
+    if (!submittedQuestions[currentQuestionData.id]) {
+      setAttempted((prev) => prev + 1);
+    }
+
+    // Show success message with a slight delay to avoid UI conflicts
+    setTimeout(() => {
+      message.success(
+        `Question ${currentQuestion + 1} submitted successfully!`
+      );
+      setIsSubmitting(false);
+    }, 300);
   };
 
-  // Modify handleStartQuiz to reset finished_at if needed
-  const handleStartQuiz = async () => {
+  // Function to evaluate all submissions with Gemini
+  const evaluateSubmissions = async () => {
+    if (Object.keys(submittedQuestions).length === 0) {
+      message.warning("No questions have been submitted for evaluation");
+      return;
+    }
+
+    setIsEvaluating(true);
+    setEvaluationModalVisible(true);
+
     try {
-      // Check if quiz button text is 'Restart Quiz'
-      if (getQuizButtonText() === 'Restart Quiz') {
-        await resetFinishedAt({ 
-          variables: { quizId },
-          onError: (error) => {
-            console.error('Error resetting finished_at:', error);
-            message.error('Failed to reset quiz');
-          }
-        });
+      // Get owner's email from the query
+      const ownerEmail = ownerData?.quizOwnerEmail;
+
+      if (!ownerEmail) {
+        throw new Error("Could not determine quiz owner email");
       }
 
-      // Proceed with starting quiz
-      await startQuiz({ 
-        variables: { quizId },
-        onError: (error) => {
-          console.error('Error starting quiz:', error);
+      // Prepare submissions for evaluation
+      const evaluationRequests = Object.entries(submittedQuestions).map(
+        ([questionId, code]) => {
+          const question = questions.find(
+            (q: { id: number }) => q.id === parseInt(questionId)
+          );
+
+          return {
+            questionId: parseInt(questionId),
+            questionText: question?.description || "Unknown question",
+            code,
+            language: userLang,
+          };
         }
+      );
+
+      // Send to API for Gemini evaluation
+      const response = await fetch("/api/evaluate-quiz", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          quizId,
+          submissions: evaluationRequests,
+          ownerEmail,
+          language: userLang,
+        }),
       });
-    } catch (error) {
-      console.error('Mutation error:', error);
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to evaluate submissions");
+      }
+
+      // Handle successful evaluation - close modal first, then show success message
+      setEvaluationModalVisible(false);
+
+      // Small delay before showing success message and finishing quiz
+      setTimeout(async () => {
+        message.success("Quiz evaluation completed and sent to instructor!");
+
+        // Continue with finishing the quiz
+        await finishQuiz({
+          variables: { quizId },
+          onCompleted: () => {
+            // Redirect after a delay to allow user to see the success message
+            setTimeout(() => {
+              router.push("/Practise?tab=quizzes");
+            }, 2000);
+          },
+        });
+      }, 500);
+    } catch (error: any) {
+      console.error("Evaluation error:", error);
+      setEvaluationModalVisible(false);
+
+      // Show error message after modal is closed
+      setTimeout(() => {
+        message.error(`Evaluation failed: ${error.message}`);
+      }, 300);
+    } finally {
+      setIsEvaluating(false);
     }
   };
 
-  // Add method to determine quiz button text
-  const getQuizButtonText = () => {
-    if (!quizData?.quizDetails) return 'Start Quiz';
-    const { start_time, finished_at } = quizData.quizDetails;
-    
-    if (start_time === null) return 'Start Quiz';
-    if (finished_at === null) return 'Resume Quiz';
-    return 'Restart Quiz';
+  // Update Finish Quiz button handler to include evaluation
+  const handleFinishQuiz = async () => {
+    // Check if any questions were submitted
+    if (Object.keys(submittedQuestions).length === 0) {
+      Modal.confirm({
+        title: "No submissions detected",
+        content:
+          "You have not submitted any questions. Are you sure you want to finish the quiz?",
+        okText: "Yes, finish quiz",
+        cancelText: "No, continue quiz",
+        onOk: async () => {
+          await finishQuiz({
+            variables: { quizId },
+            onCompleted: () => {
+              router.push("/Practise?tab=quizzes");
+            },
+          });
+        },
+      });
+      return;
+    }
+
+    // If there are submissions, evaluate them
+    Modal.confirm({
+      title: "Finish Quiz and Submit for Evaluation",
+      content: (
+        <div>
+          <p>
+            You have submitted {Object.keys(submittedQuestions).length} out of{" "}
+            {questions.length} questions.
+          </p>
+          <p>
+            Your submissions will be evaluated by AI and the results will be
+            sent at {ownerData?.quizOwnerEmail}.
+          </p>
+          <p>Continue?</p>
+        </div>
+      ),
+      icon: <CheckCircleOutlined style={{ color: "#1890ff" }} />,
+      okText: "Yes, evaluate and submit",
+      cancelText: "No, continue quiz",
+      onOk: evaluateSubmissions,
+    });
   };
 
   return (
     <div className={styles.App}>
       <CompilerNavbar
-        userLang={userLang} setUserLang={setUserLang}
-        userTheme={userTheme} setUserTheme={setUserTheme}
-        fontSize={fontSize} setFontSize={setFontSize}
+        userLang={userLang}
+        setUserLang={setUserLang}
+        userTheme={userTheme}
+        setUserTheme={setUserTheme}
+        fontSize={fontSize}
+        setFontSize={setFontSize}
       />
       <div className={styles.quizContainer}>
         {/* Left Section - Question Navigation */}
@@ -303,21 +449,21 @@ export default function CompilerPage() {
           <div className={styles.timerSection}>
             <div className={styles.timerControls}>
               <div className={styles.timer}>
-                {quizLoading ? 'Loading...' : formatTime(timeLeft)}
+                {quizLoading ? "Loading..." : formatTime(timeLeft)}
               </div>
-              <Button 
+              <Button
                 type="primary"
                 onClick={handlePauseResume}
                 disabled={quizLoading}
               >
-                {isPaused ? 'Resume' : 'Pause'}
+                {isPaused ? "Resume" : "Pause"}
               </Button>
             </div>
             <div className={styles.progress}>
               <span>Total Questions: {questions.length}</span>
               <span>Attempted: {attempted}</span>
-              <Progress 
-                percent={(attempted/questions.length) * 100} 
+              <Progress
+                percent={(attempted / questions.length) * 100}
                 status="active"
                 strokeColor="#afec3f"
               />
@@ -334,6 +480,11 @@ export default function CompilerPage() {
                 <p>{currentQuestionData.description}</p>
                 <div className={styles.questionMeta}>
                   <span>Difficulty: {currentQuestionData.difficulty}</span>
+                  {submittedQuestions[currentQuestionData.id] && (
+                    <span className={styles.submittedBadge}>
+                      <CheckCircleOutlined /> Submitted
+                    </span>
+                  )}
                 </div>
               </>
             ) : (
@@ -341,30 +492,44 @@ export default function CompilerPage() {
             )}
           </div>
           <div className={styles.navigation}>
-            <Button 
-              type='primary'
-              icon={<LeftOutlined />} 
-              onClick={() => setCurrentQuestion(prev => Math.max(0, prev - 1))}
+            <Button
+              type="primary"
+              icon={<LeftOutlined />}
+              onClick={() =>
+                setCurrentQuestion((prev) => Math.max(0, prev - 1))
+              }
               disabled={currentQuestion === 0}
             >
               Previous
             </Button>
-            <Button 
-              type='primary'
-              icon={<RightOutlined />} 
-              onClick={() => setCurrentQuestion(prev => Math.min(questions.length - 1, prev + 1))}
+            <Button
+              type="primary"
+              onClick={submitCurrentQuestion}
+              disabled={!currentQuestionData || isSubmitting}
+            >
+              Submit Question
+            </Button>
+            <Button
+              type="primary"
+              icon={<RightOutlined />}
+              onClick={() =>
+                setCurrentQuestion((prev) =>
+                  Math.min(questions.length - 1, prev + 1)
+                )
+              }
               disabled={currentQuestion === questions.length - 1}
             >
               Next
             </Button>
           </div>
-          <Button 
-            type="primary" 
+          <Button
+            type="primary"
             danger
             className={styles.finishBtn}
             onClick={handleFinishQuiz}
+            disabled={isEvaluating}
           >
-            Finish Quiz
+            {isEvaluating ? "Evaluating..." : "Finish Quiz"}
           </Button>
         </div>
 
@@ -379,7 +544,9 @@ export default function CompilerPage() {
               language={userLang}
               defaultLanguage="python"
               defaultValue="# Enter your code here"
-              onChange={(value: string | undefined) => { setUserCode(value || '') }}
+              onChange={(value: string | undefined) => {
+                setUserCode(value || "");
+              }}
               onMount={handleEditorDidMount}
               key={currentQuestion}
             />
@@ -388,16 +555,26 @@ export default function CompilerPage() {
           <div ref={ioContainerRef} className={styles.ioSection}>
             <div className={styles.ioContainer}>
               <h4 className={styles.sectionHeader}>Input:</h4>
-              <textarea 
+              <textarea
                 onChange={(e) => setUserInput(e.target.value)}
                 className={styles.codeInput}
               />
             </div>
             <div className={styles.ioContainer}>
-              <h4 className={styles.sectionHeader} style={{paddingTop: '10px'}}>Output:</h4>
+              <h4
+                className={styles.sectionHeader}
+                style={{ paddingTop: "10px" }}
+              >
+                Output:
+              </h4>
               {loading ? (
                 <div className={styles.spinnerBox}>
-                  <Image src="/spinner.svg" alt="Loading..." width={200} height={200} />
+                  <Image
+                    src="/spinner.svg"
+                    alt="Loading..."
+                    width={200}
+                    height={200}
+                  />
                 </div>
               ) : (
                 <div className={styles.outputBox}>
@@ -416,6 +593,8 @@ export default function CompilerPage() {
           </div>
         </div>
       </div>
+
+      
     </div>
   );
-} 
+}
