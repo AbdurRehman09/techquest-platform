@@ -63,6 +63,8 @@ model Quiz {
   yearStart         Int
   title             String             @default("Untitled Quiz")
   type              QuizType           @default(REGULAR)
+  rubricType        String             @default("default")
+  customRubric     String?
   quiz_assignments  quiz_assignments[]
   owner             User               @relation("UserQuizzes", fields: [quizOwnedBy], references: [id])
   subject           Subject            @relation(fields: [subjectId], references: [id])

@@ -1,17 +1,35 @@
-'use client'
-import React, { useState } from 'react';
-import { Typography, Button, Card, Row, message, Col, Empty, Tooltip } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined, CodeOutlined } from '@ant-design/icons';
-import { gql, useMutation, useQuery } from '@apollo/client';
-import { useRouter } from 'next/navigation';
-import AssignQuizModal from '../AssignQuizModal/page';
-import { useSession } from 'next-auth/react';
-import DeleteQuizButton from '../DeleteQuizButton/page';
-
+"use client";
+import React, { useState } from "react";
+import {
+  Typography,
+  Button,
+  Card,
+  Row,
+  message,
+  Col,
+  Empty,
+  Tooltip,
+  Modal,
+  Radio,
+  Input,
+} from "antd";
+import {
+  PlusOutlined,
+  EditOutlined,
+  DeleteOutlined,
+  EyeOutlined,
+  CodeOutlined,
+  SettingOutlined,
+} from "@ant-design/icons";
+import { gql, useMutation, useQuery } from "@apollo/client";
+import { useRouter } from "next/navigation";
+import AssignQuizModal from "../AssignQuizModal/page";
+import { useSession } from "next-auth/react";
+import DeleteQuizButton from "../DeleteQuizButton/page";
 
 const { Title, Text } = Typography;
 
-
+// GraphQL queries and mutations
 const GET_USER_QUIZZES = gql`
   query GetUserQuizzes($userId: Int!) {
     userQuizzes(userId: $userId) {
@@ -25,6 +43,7 @@ const GET_USER_QUIZZES = gql`
       subject {
         name
       }
+      quizOwnedBy
       yearStart
       yearEnd
       start_time
@@ -60,6 +79,7 @@ const GET_ASSIGNED_QUIZZES = gql`
     }
   }
 `;
+
 const RESET_FINISHED_AT = gql`
   mutation ResetQuizFinishedAt($quizId: Int!) {
     resetQuizFinishedAt(quizId: $quizId) {
@@ -71,6 +91,19 @@ const RESET_FINISHED_AT = gql`
   }
 `;
 
+const SET_QUIZ_RUBRIC = gql`
+  mutation SetQuizRubric(
+    $quizId: Int!
+    $rubricType: String!
+    $customRubric: String
+  ) {
+    setQuizRubric(
+      quizId: $quizId
+      rubricType: $rubricType
+      customRubric: $customRubric
+    )
+  }
+`;
 
 interface AssignedQuizData {
   id: number;
@@ -90,51 +123,50 @@ interface Quiz {
   };
   yearStart: number;
   yearEnd: number;
-  type: 'REGULAR' | 'ASSIGNED';
+  type: "REGULAR" | "ASSIGNED";
   start_time: Date | null;
   finished_at: Date | null;
+  quizOwnedBy: number;
 }
 
 interface QuizzesListProps {
   showAssignButton?: boolean;
-  type?: 'REGULAR' | 'ASSIGNED';
+  type?: "REGULAR" | "ASSIGNED";
   userId?: number;
   showCreateButton?: boolean;
 }
 
 const QuizzesList: React.FC<QuizzesListProps> = ({
   showAssignButton = false,
-  type = 'REGULAR',
+  type = "REGULAR",
   userId,
-  showCreateButton = true
+  showCreateButton = true,
 }) => {
   const router = useRouter();
   const { data: session } = useSession();
+
+  // State declarations
   const [assignModalVisible, setAssignModalVisible] = useState(false);
   const [selectedQuizId, setSelectedQuizId] = useState<number | null>(null);
-  const [resetFinishedAt] = useMutation(RESET_FINISHED_AT);
+  const [rubricModalVisible, setRubricModalVisible] = useState(false);
+  const [selectedRubricType, setSelectedRubricType] = useState("default");
+  const [customRubric, setCustomRubric] = useState("");
+  const [currentQuizId, setCurrentQuizId] = useState<number | null>(null);
 
-  // Get quizzes based on type
+  // Hook declarations - MUST be called before any conditionals
+  const [resetFinishedAt] = useMutation(RESET_FINISHED_AT);
+  const [setQuizRubric] = useMutation(SET_QUIZ_RUBRIC);
+
   const { loading, error, data, refetch } = useQuery(
-    type === 'ASSIGNED' ? GET_ASSIGNED_QUIZZES : GET_USER_QUIZZES,
+    type === "ASSIGNED" ? GET_ASSIGNED_QUIZZES : GET_USER_QUIZZES,
     {
       variables: { userId },
       skip: !userId,
     }
   );
-  if (loading) return <div>Loading...</div>;
-  if (error) return <div>Error: {error.message}</div>;
-
-  // Map data based on type with proper typing
-  const quizzes: Quiz[] = type === 'ASSIGNED'
-    ? data?.assignedQuizzes?.map((a: AssignedQuizData) => a.quizzes) || []
-    : data?.userQuizzes || [];
-
-  // Determine user role from data or session
-  const userRole = data?.user?.role || session?.user?.role;
 
   const handleCreateQuiz = () => {
-    router.push('/CreateQuiz');
+    router.push("/CreateQuiz");
   };
 
   const handleShowDetails = (quizId: number) => {
@@ -147,36 +179,36 @@ const QuizzesList: React.FC<QuizzesListProps> = ({
   };
 
   const getQuizButtonText = (quiz: Quiz) => {
-    if (quiz?.start_time === null) return 'Start Quiz';
-    if (quiz?.finished_at === null) return 'Resume Quiz';
-    return 'Restart Quiz';
+    if (quiz?.start_time === null) return "Start Quiz";
+    if (quiz?.finished_at === null) return "Resume Quiz";
+    return "Restart Quiz";
   };
 
   const isQuizRestartable = (quiz: Quiz) => {
-    return type === 'REGULAR' && quiz.finished_at !== null;
+    return type === "REGULAR" && quiz.finished_at !== null;
   };
 
   const handleStartQuiz = async (quiz: Quiz) => {
     if (!quiz) return;
 
-    if (quiz.type === 'ASSIGNED' && quiz.start_time && quiz.finished_at) {
-      message.warning('This assigned quiz has already been submitted');
+    if (quiz.type === "ASSIGNED" && quiz.start_time && quiz.finished_at) {
+      message.warning("This assigned quiz has already been submitted");
       return;
     }
 
     // If it's a restart scenario for a regular quiz
-    if (getQuizButtonText(quiz) === 'Restart Quiz') {
+    if (getQuizButtonText(quiz) === "Restart Quiz") {
       try {
         // Reset finished_at before starting
-        await resetFinishedAt({ 
+        await resetFinishedAt({
           variables: { quizId: quiz.id },
           onError: (error) => {
-            console.error('Error resetting finished_at:', error);
-            message.error('Failed to reset quiz');
-          }
+            console.error("Error resetting finished_at:", error);
+            message.error("Failed to reset quiz");
+          },
         });
       } catch (error) {
-        console.error('Reset mutation error:', error);
+        console.error("Reset mutation error:", error);
         return;
       }
     }
@@ -184,13 +216,48 @@ const QuizzesList: React.FC<QuizzesListProps> = ({
     router.push(`/compiler?quizId=${quiz.id}`);
   };
 
+  const handleSetRubric = (quizId: number) => {
+    setCurrentQuizId(quizId);
+    setRubricModalVisible(true);
+  };
+
+  const saveRubric = async () => {
+    if (!currentQuizId) return;
+
+    try {
+      await setQuizRubric({
+        variables: {
+          quizId: currentQuizId,
+          rubricType: selectedRubricType,
+          customRubric: selectedRubricType === "custom" ? customRubric : null,
+        },
+      });
+
+      message.success("Rubric settings saved successfully");
+      setRubricModalVisible(false);
+    } catch (error) {
+      message.error("Failed to save rubric settings");
+      console.error(error);
+    }
+  };
+
+  if (loading) return <div>Loading...</div>;
+  if (error) return <div>Error: {error.message}</div>;
   if (!userId) return <div>Please log in to view quizzes</div>;
 
-  const showAssignButtonForQuiz = showAssignButton && session?.user?.role === 'TEACHER';
+  // Map data based on type with proper typing
+  const quizzes: Quiz[] =
+    type === "ASSIGNED"
+      ? data?.assignedQuizzes?.map((a: AssignedQuizData) => a.quizzes) || []
+      : data?.userQuizzes || [];
+
+  // Determine user role from data or session
+  const userRole = data?.user?.role || session?.user?.role;
+
+  const showAssignButtonForQuiz = showAssignButton && userRole === "TEACHER";
 
   return (
     <>
-
       {showCreateButton && (
         <Button
           type="primary"
@@ -202,10 +269,12 @@ const QuizzesList: React.FC<QuizzesListProps> = ({
         </Button>
       )}
 
-
-
       {quizzes.map((quiz: Quiz) => (
-        <Card key={quiz.id} className="mb-4" styles={{ body: { padding: '12px' } }}>
+        <Card
+          key={quiz.id}
+          className="mb-4"
+          styles={{ body: { padding: "12px" } }}
+        >
           <Row justify="space-between" align="middle">
             <Col>
               <Title level={5} className="m-0 flex items-center">
@@ -222,18 +291,22 @@ const QuizzesList: React.FC<QuizzesListProps> = ({
               >
                 Show Details
               </Button>
-              {userRole !== 'TEACHER' && (
+              {userRole !== "TEACHER" && (
                 <Tooltip
-                  title={quiz.start_time && quiz.finished_at ? "Quiz already submitted" : undefined}
+                  title={
+                    quiz.start_time && quiz.finished_at
+                      ? "Quiz already submitted"
+                      : undefined
+                  }
                 >
                   <Button
-                    className="bg-gray-100"
+                    className="bg-gray-100 mr-2"
                     icon={<CodeOutlined />}
                     onClick={() => handleStartQuiz(quiz)}
                     disabled={
                       quiz.start_time !== null &&
                       quiz.finished_at !== null &&
-                      type === 'ASSIGNED'
+                      type === "ASSIGNED"
                     }
                   >
                     {getQuizButtonText(quiz)}
@@ -249,7 +322,7 @@ const QuizzesList: React.FC<QuizzesListProps> = ({
                   Assign
                 </Button>
               )}
-              {type === 'REGULAR' && (
+              {type === "REGULAR" && (
                 <DeleteQuizButton
                   quizId={quiz.id}
                   userId={userId!}
@@ -257,6 +330,16 @@ const QuizzesList: React.FC<QuizzesListProps> = ({
                     refetch();
                   }}
                 />
+              )}
+              {userId === quiz.quizOwnedBy && (
+                <Button
+                  style={{ backgroundColor: "#c5e4f0" }}
+                  icon={<SettingOutlined />}
+                  onClick={() => handleSetRubric(quiz.id)}
+                  className="mr-2"
+                >
+                  Set Rubric
+                </Button>
               )}
             </Col>
           </Row>
@@ -267,16 +350,15 @@ const QuizzesList: React.FC<QuizzesListProps> = ({
             <Col span={8}>
               <Text>Questions: {quiz.numberOfQuestions}</Text>
             </Col>
-            <Col span={8}>
-              Duration: {quiz.duration} mins
-            </Col>
+            <Col span={8}>Duration: {quiz.duration} mins</Col>
             <Col span={24}>
-              <Text>Year Range: {quiz.yearStart} - {quiz.yearEnd}</Text>
+              <Text>
+                Year Range: {quiz.yearStart} - {quiz.yearEnd}
+              </Text>
             </Col>
           </Row>
         </Card>
-      ))
-      }
+      ))}
 
       {selectedQuizId && (
         <AssignQuizModal
@@ -288,8 +370,50 @@ const QuizzesList: React.FC<QuizzesListProps> = ({
           }}
         />
       )}
+
+      <Modal
+        title="Set Evaluation Rubric"
+        open={rubricModalVisible}
+        onCancel={() => setRubricModalVisible(false)}
+        onOk={saveRubric}
+        okText="Save Rubric"
+      >
+        <div style={{ marginBottom: 20 }}>
+          <p>Select how you want student submissions to be evaluated:</p>
+          <Radio.Group
+            value={selectedRubricType}
+            onChange={(e) => setSelectedRubricType(e.target.value)}
+          >
+            <Radio
+              value="default"
+              style={{ display: "block", marginBottom: 10 }}
+            >
+              Tech-Quest Default
+              <div style={{ color: "#888", marginLeft: 24, fontSize: 12 }}>
+                Evaluates code on correctness, efficiency, and code quality with
+                a 1-5 scoring system
+              </div>
+            </Radio>
+            <Radio value="custom" style={{ display: "block" }}>
+              Set Your Own Rubric
+            </Radio>
+          </Radio.Group>
+        </div>
+
+        {selectedRubricType === "custom" && (
+          <div>
+            <p>Enter your custom rubric instructions:</p>
+            <Input.TextArea
+              rows={6}
+              value={customRubric}
+              onChange={(e) => setCustomRubric(e.target.value)}
+              placeholder="Describe how you want the code to be evaluated. Include specific criteria, scoring system, and any special considerations."
+            />
+          </div>
+        )}
+      </Modal>
     </>
   );
 };
 
-export default QuizzesList; 
+export default QuizzesList;
