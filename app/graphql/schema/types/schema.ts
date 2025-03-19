@@ -66,6 +66,7 @@ export const typeDefs = gql`
     id: Int!
     duration: Int!
     numberOfQuestions: Int!
+    quizOwnedBy: Int!
     yearStart: Int!
     yearEnd: Int!
     title: String!
@@ -77,6 +78,8 @@ export const typeDefs = gql`
     assignments: [QuizAssignment!]!
     start_time: DateTime
     finished_at: DateTime
+    rubricType: String
+    customRubric: String
   }
 
   enum QuizType {
@@ -128,5 +131,10 @@ export const typeDefs = gql`
     startQuiz(quizId: Int!): Quiz!
     finishQuiz(quizId: Int!): Quiz!
     resetQuizFinishedAt(quizId: Int!): Quiz!
+    setQuizRubric(
+      quizId: Int!
+      rubricType: String!
+      customRubric: String
+    ): Boolean!
   }
 `;

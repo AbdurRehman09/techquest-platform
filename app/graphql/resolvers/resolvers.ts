@@ -692,5 +692,47 @@ export const resolvers = {
 
       return updatedQuiz;
     },
+
+    setQuizRubric: async (
+      _: any,
+      {
+        quizId,
+        rubricType,
+        customRubric,
+      }: { quizId: number; rubricType: string; customRubric?: string },
+      { prisma, session }: Context
+    ) => {
+      if (!session?.user?.email) {
+        throw new Error("Not authenticated");
+      }
+
+      // Find the quiz
+      const quiz = await prisma.quiz.findUnique({
+        where: { id: quizId },
+        include: {
+          owner: true,
+        },
+      });
+
+      if (!quiz) {
+        throw new Error("Quiz not found");
+      }
+
+      // Check if the user is the owner of the quiz
+      if (quiz.owner.email !== session.user.email) {
+        throw new Error("You can only set rubrics for your own quizzes");
+      }
+
+      // Update the quiz with rubric settings
+      await prisma.quiz.update({
+        where: { id: quizId },
+        data: {
+          rubricType,
+          customRubric: rubricType === "custom" ? customRubric : null,
+        },
+      });
+
+      return true;
+    },
   },
 };

@@ -53,7 +53,7 @@ const DeleteQuizButton: React.FC<DeleteQuizButtonProps> = ({
   return (
     <>
       <Button
-        className='text-white bg-red-500'
+        className='text-white bg-red-500 mr-2'
         icon={<DeleteOutlined />}
         onClick={showDeleteConfirm}
         loading={loading}

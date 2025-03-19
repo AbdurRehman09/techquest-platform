@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import nodemailer from "nodemailer";
+import { PrismaClient } from "@prisma/client";
 
 // Initialize Gemini API
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_CLIENT_ID || "");
@@ -63,7 +64,7 @@ export async function POST(request: NextRequest) {
     // Evaluate each submission with Gemini
     const evaluationResults = await Promise.all(
       submissions.map(async (submission) => {
-        const result = await evaluateWithGemini(submission);
+        const result = await evaluateWithGemini(submission, quizId);
         return {
           questionId: submission.questionId,
           questionText: submission.questionText,
@@ -89,11 +90,22 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function evaluateWithGemini(submission: SubmissionData) {
+async function evaluateWithGemini(submission: SubmissionData, quizId: number) {
   try {
     const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
-    const prompt = `
+    // Fetch the rubric settings for this quiz
+    const prisma = new PrismaClient();
+    const quiz = await prisma.quiz.findUnique({
+      where: { id: quizId },
+      select: {
+        rubricType: true,
+        customRubric: true,
+      },
+    });
+
+    // Default prompt if no custom rubric exists
+    let promptText = `
 You are an expert programming instructor evaluating a student's code submission for a programming quiz.
 
 QUESTION:
@@ -128,7 +140,25 @@ Issues: [List specific issues]
 Suggestions: [Your recommendations]
 `;
 
-    const result = await model.generateContent(prompt);
+    // If there's a custom rubric, use it instead
+    if (quiz?.rubricType === "custom" && quiz?.customRubric) {
+      promptText = `
+You are an expert programming instructor evaluating a student's code submission for a programming quiz.
+
+QUESTION:
+${submission.questionText}
+
+STUDENT'S CODE (${submission.language}):
+\`\`\`${submission.language}
+${submission.code}
+\`\`\`
+
+EVALUATION INSTRUCTIONS:
+${quiz.customRubric}
+`;
+    }
+
+    const result = await model.generateContent(promptText);
     const response = result.response;
     return response.text();
   } catch (error: any) {
