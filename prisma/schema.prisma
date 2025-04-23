@@ -14,7 +14,7 @@ model User {
   password         String?
   createdAt        DateTime           @default(now())
   updatedAt        DateTime           @updatedAt
-  role             users_role?        
+  role             users_role?
   emailVerified    DateTime?
   image            String?
   provider         String?            @db.VarChar(255)
@@ -39,11 +39,12 @@ model Subject {
 }
 
 model Topic {
-  id        Int     @id @default(autoincrement())
-  name      String  @unique
+  id        Int        @id @default(autoincrement())
+  name      String     @unique
   subjectId Int
   quizzes   Quiz[]
-  subject   Subject @relation(fields: [subjectId], references: [id])
+  subject   Subject    @relation(fields: [subjectId], references: [id])
+  questions Question[] @relation("TopicQuestions") // <--- Add this line
 
   @@index([subjectId], map: "topics_subjectId_fkey")
   @@map("topics")
@@ -64,7 +65,7 @@ model Quiz {
   title             String             @default("Untitled Quiz")
   type              QuizType           @default(REGULAR)
   rubricType        String             @default("default")
-  customRubric     String?
+  customRubric      String?
   quiz_assignments  quiz_assignments[]
   owner             User               @relation("UserQuizzes", fields: [quizOwnedBy], references: [id])
   subject           Subject            @relation(fields: [subjectId], references: [id])
@@ -96,13 +97,16 @@ model Question {
   description  String
   difficulty   String
   subjectId    Int
+  topicId      Int?
   year         Int
   createdAt    DateTime              @default(now())
   explanations QuestionExplanation[]
   subject      Subject               @relation(fields: [subjectId], references: [id])
+  topic        Topic?                @relation(fields: [topicId], references: [id], name: "TopicQuestions") // <--- Add the relation name here
   quizzes      Quiz[]                @relation("QuestionToQuiz")
 
   @@index([subjectId], map: "questions_subjectId_fkey")
+  @@index([topicId], map: "questions_topicId_fkey")
   @@map("questions")
 }
 
