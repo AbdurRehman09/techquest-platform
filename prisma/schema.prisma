@@ -55,7 +55,7 @@ model Quiz {
   quizOwnedBy       Int
   duration          Int
   subjectId         Int
-  topicId           Int
+  topicId           Int?
   numberOfQuestions Int                @default(0)
   createdAt         DateTime           @default(now())
   finished_at       DateTime?
@@ -69,7 +69,7 @@ model Quiz {
   quiz_assignments  quiz_assignments[]
   owner             User               @relation("UserQuizzes", fields: [quizOwnedBy], references: [id])
   subject           Subject            @relation(fields: [subjectId], references: [id])
-  topic             Topic              @relation(fields: [topicId], references: [id])
+  topic             Topic?             @relation(fields: [topicId], references: [id])
   questions         Question[]         @relation("QuestionToQuiz")
 
   @@index([quizOwnedBy], map: "quizzes_quizOwnedBy_fkey")
@@ -97,7 +97,7 @@ model Question {
   description  String
   difficulty   String
   subjectId    Int
-  topicId      Int?
+  topicId      Int?                  @default(1)
   year         Int
   createdAt    DateTime              @default(now())
   explanations QuestionExplanation[]

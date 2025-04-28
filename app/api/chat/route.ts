@@ -69,7 +69,7 @@ async function initializeRAG() {
     console.log(`Split into ${splits.length} chunks.`);
 
     const embeddings = new GoogleGenerativeAIEmbeddings({
-      apiKey: process.env.GOOGLE_CLIENT_ID!,
+      apiKey: process.env.GEMINI_API_KEY!,
       model: "text-embedding-004",
     });
 
@@ -82,7 +82,7 @@ async function initializeRAG() {
     console.log("Retriever created (k=6).");
 
     model = new ChatGoogleGenerativeAI({
-      apiKey: process.env.GOOGLE_CLIENT_ID!,
+      apiKey: process.env.GEMINI_API_KEY!,
       model: "gemini-1.5-flash",
       maxOutputTokens: 2048,
       temperature: 0.3,
