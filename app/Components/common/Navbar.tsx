@@ -2,7 +2,7 @@
 
 import React from 'react';
 import MaxWidthWrapper from './MaxWidthWrapper';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, MessageSquare } from 'lucide-react';
 import Link from "next/link";
 import { buttonVariants } from "../ui/button";
 import { usePathname, useRouter } from 'next/navigation';
@@ -62,6 +62,10 @@ const Navbar = () => {
                                 <span>Welcome, {session.user.name}</span>
                                 <Link href="/CommonDashboard" className={buttonVariants({ variant: "secondary" })}>
                                     Dashboard
+                                </Link>
+                                <Link href="/chat" className={buttonVariants({ variant: "ghost" })}>
+                                    <MessageSquare className="h-5 w-5 mr-2" />
+                                    Chat
                                 </Link>
                                 <button
                                     onClick={handleSignOut}

@@ -3,7 +3,6 @@ import { ConfigProvider } from "antd"
 import themeConfig from "./themes/theme.config"
 import './themes/globals.css'
 import Navbar from './Components/common/Navbar'
-
 export default function RootLayout({
   children,
 }: {
