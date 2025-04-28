@@ -37,7 +37,7 @@ const GET_USER_QUIZZES = gql`
       title
       duration
       numberOfQuestions
-      topic {
+      topics {
         name
       }
       subject {
@@ -64,7 +64,7 @@ const GET_ASSIGNED_QUIZZES = gql`
         title
         duration
         numberOfQuestions
-        topic {
+        topics {
           name
         }
         subject {

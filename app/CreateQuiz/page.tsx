@@ -1,6 +1,6 @@
 'use client';
 import React, { useState } from 'react';
-import { Layout, Typography, Select, Input, Slider, Button, Space, Radio, List, Switch, InputNumber, message, App } from 'antd';
+import { Layout, Typography, Select, Input, Slider, Button, Space, Radio, List, Switch, InputNumber, message, App, Checkbox } from 'antd';
 import { gql, useQuery, useMutation } from '@apollo/client';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
@@ -26,7 +26,8 @@ const CREATE_QUIZ = gql`
       numberOfQuestions
       yearStart
       yearEnd
-      topic {
+      topics {
+        id
         name
       }
       questions {
@@ -45,7 +46,7 @@ const CreateQuiz = () => {
     const router = useRouter();
     const { data: session } = useSession();
     const [quizName, setQuizName] = useState('');
-    const [selectedTopic, setSelectedTopic] = useState<number | null>(null);
+    const [selectedTopicIds, setSelectedTopicIds] = useState<number[]>([]); // <--- ADD state for array of IDs, initialize as empty array
     const [difficulty, setDifficulty] = useState('easy');
     const [yearRange, setYearRange] = useState([2015, 2024]);
     const [numQuestions, setNumQuestions] = useState(10);
@@ -80,9 +81,26 @@ const CreateQuiz = () => {
         }
     });
 
+    // --- NEW HANDLER FOR CHECKBOX CHANGES ---
+    const handleTopicCheckboxChange = (topicId: number, checked: boolean) => {
+        setSelectedTopicIds(prevSelected => {
+            if (checked) {
+                // Add the topic ID if it's not already in the array
+                if (!prevSelected.includes(topicId)) {
+                     return [...prevSelected, topicId];
+                }
+                return prevSelected; // Return current state if already included
+            } else {
+                // Remove the topic ID from the array
+                return prevSelected.filter(id => id !== topicId);
+            }
+        });
+    };
+
+
     const handleCreateQuiz = async () => {
-        if (!selectedTopic || !quizName) {
-            message.error('Please select a topic and provide a quiz name');
+        if (selectedTopicIds.length === 0 || !quizName) {
+            message.error('Please select at least one topic and provide a quiz name');
             return;
         }
 
@@ -90,7 +108,7 @@ const CreateQuiz = () => {
             await createQuiz({
                 variables: {
                     input: {
-                        topicId: selectedTopic,
+                        topicIds: selectedTopicIds,
                         name: quizName,
                         difficulty,
                         duration: totalTime,
@@ -115,18 +133,18 @@ const CreateQuiz = () => {
                             <div className="w-full md:w-2/3">
                                 <div className="bg-white p-4 rounded-lg shadow mb-4">
                                     <div className="mb-4">
-                                        <Title level={5}>Select Topic for Quiz:</Title>
+                                        <Title level={5}>Select Topics for Quiz:</Title>
                                         <List
                                             loading={topicsLoading}
                                             dataSource={topicsData?.topicsBySubject || []}
                                             renderItem={(topic: any) => (
-                                                <List.Item>
-                                                    <Radio
-                                                        checked={selectedTopic === topic.id}
-                                                        onChange={() => setSelectedTopic(topic.id)}
+                                                <List.Item key={topic.id}>
+                                                    <Checkbox
+                                                        checked={selectedTopicIds.includes(topic.id)} // Check if topic's ID is in the selectedTopicIds array
+                                                        onChange={(e) => handleTopicCheckboxChange(topic.id, e.target.checked)} // Use new handler to update the array
                                                     >
                                                         {topic.name}
-                                                    </Radio>
+                                                    </Checkbox>
                                                 </List.Item>
                                             )}
                                         />
@@ -221,7 +239,7 @@ const CreateQuiz = () => {
                             className="mt-4"
                             onClick={handleCreateQuiz}
                             loading={createLoading}
-                            disabled={!selectedTopic || !quizName}
+                            disabled={selectedTopicIds.length === 0 || !quizName}
                         >
                             Create Quiz
                         </Button>

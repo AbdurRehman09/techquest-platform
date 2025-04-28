@@ -35,6 +35,7 @@ export const typeDefs = gql`
     name: String!
     subject: Subject!
     quizzes: [Quiz!]!
+    questions: [Question!]!
   }
 
   type CustomQuestion {
@@ -60,6 +61,7 @@ export const typeDefs = gql`
     difficulty: String!
     subject: Subject!
     explanations: [QuestionExplanation!]!
+    topic: Topic
   }
 
   type Quiz {
@@ -72,7 +74,7 @@ export const typeDefs = gql`
     title: String!
     type: QuizType!
     subject: Subject!
-    topic: Topic!
+    topics: [Topic!]!
     owner: User!
     questions: [Question!]!
     assignments: [QuizAssignment!]!
@@ -89,7 +91,6 @@ export const typeDefs = gql`
 
   type QuizAssignment {
     id: Int!
-    name: String!
     quizId: Int!
     shareableLink: String!
     createdAt: DateTime!
@@ -98,7 +99,7 @@ export const typeDefs = gql`
   }
 
   input CreateQuizInput {
-    topicId: Int!
+    topicIds: [Int!]!
     difficulty: String!
     duration: Int!
     numberOfQuestions: Int!
