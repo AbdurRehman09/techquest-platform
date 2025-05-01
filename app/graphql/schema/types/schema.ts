@@ -74,7 +74,7 @@ export const typeDefs = gql`
     title: String!
     type: QuizType!
     subject: Subject!
-    topics: [Topic!]!
+    topics: [Topic]!
     owner: User!
     questions: [Question!]!
     assignments: [QuizAssignment!]!
