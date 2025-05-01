@@ -29,7 +29,7 @@ interface QuestionExplanationsArgs {
 }
 
 interface CreateQuizInput {
-  topicId: number;
+  topicIds: number[];
   difficulty: string;
   duration: number;
   numberOfQuestions: number;
@@ -46,7 +46,7 @@ interface QuizCreateData extends Prisma.QuizCreateInput {
 
 const prisma = new PrismaClient();
 
-// Define custom types to match Prisma schema
+// Define custom types to match Prisma schema (Keeping these if used elsewhere)
 type QuestionWithYear = Question & {
   year: number;
 };
@@ -191,7 +191,7 @@ export const resolvers = {
               },
             },
           },
-          topic: {
+          topics: {
             select: {
               id: true,
               name: true,
@@ -227,7 +227,7 @@ export const resolvers = {
           quizOwnedBy: userId,
         },
         include: {
-          topic: true,
+          topics: true,
           subject: true,
         },
       });
@@ -250,7 +250,7 @@ export const resolvers = {
           quizzes: {
             include: {
               subject: true,
-              topic: true,
+              topics: true,
             },
           },
           users: true,
@@ -339,7 +339,7 @@ export const resolvers = {
       }
 
       const {
-        topicId,
+        topicIds,
         difficulty,
         duration,
         numberOfQuestions,
@@ -348,45 +348,65 @@ export const resolvers = {
         name,
       } = input;
 
-      const topic = await prisma.topic.findUnique({
-        where: { id: topicId },
-        select: { subjectId: true },
+      // --- VALIDATION & DERIVE SUBJECT ID (Recommended logic) ---
+      // Ensure at least one topic is selected
+      if (!topicIds || topicIds.length === 0) {
+        throw new Error("Please select at least one topic.");
+      }
+
+      // const topic = await prisma.topic.findUnique({
+      //   where: { id: topicId },
+      //   select: { subjectId: true },
+      // });
+      //Replace above code with this instead
+      // Fetch the topics to verify they exist and get their subjectId(s)
+      // This is important if you need to link the quiz to a single subject
+      // or validate that topics are from the correct subject(s).
+      const selectedTopics = await prisma.topic.findMany({
+        where: {
+            id: { in: topicIds }
+        },
+        select: {
+            id: true,
+            subjectId: true,
+            name: true // Fetch name for potential error messages
+        }
       });
 
-      if (!topic) throw new Error("Topic not found");
+      // if (!topic) throw new Error("Topic not found");  //Remove this, probably not needed
+      // Check if all provided topicIds were valid
+      if (selectedTopics.length !== topicIds.length) {
+        const foundIds = selectedTopics.map(t => t.id);
+        const notFoundIds = topicIds.filter(id => !foundIds.includes(id));
+        throw new Error(`One or more selected topics were not found: ${notFoundIds.join(', ')}`);
+      }
 
-      // Get questions based on criteria
-      // const availableQuestions = await prisma.question.findMany({
-      //   where: {
-      //     subject: {
-      //       topics: {
-      //         some: {
-      //           id: topicId,
-      //         },
-      //       },
-      //     },
-      //     difficulty,
-      //     year: {
-      //       gte: yearStart,
-      //       lte: yearEnd,
-      //     },
-      //   },
-      // });
-      // --- FINAL CODE UPDATE HERE ---
+      // Example: Verify all selected topics belong to the same subject If quizzes are intended to be subject-specific.
+      const firstSubjectId = selectedTopics[0].subjectId;
+      const allSameSubject = selectedTopics.every(topic => topic.subjectId === firstSubjectId);
+
+      if (!allSameSubject) {
+          // You might need more sophisticated logic or a different schema if quizzes can legitimately span multiple subjects.
+          throw new Error("All selected topics must belong to the same subject.");
+      }
+      const quizSubjectId = firstSubjectId; // This will be the subjectId for the quiz
+      // --- END OF VALIDATION & DERIVE SUBJECT ID ---
+
+
+      // Get questions based on criteria from ALL selected topics
       const availableQuestions = await prisma.question.findMany({
         where: {
-          // **** USE THE NEW CORRECT FILTER ****
-          topicId: topicId, // <--- Filter directly by the topicId on the Question model
+          // New filter using the 'in' operator for the array of topicIds for questions whose topicId is IN the array of selected topicIds
+          topicId: {
+            in: topicIds
+          },
 
-          // Keep your other filters:
           difficulty,
           year: {
             gte: yearStart,
             lte: yearEnd,
           },
-          // You can optionally add subjectId here as well, but filtering by topicId
-          // which belongs to a subject is typically sufficient and implied.
-          // subjectId: topic.subjectId, // Optional additional filter
+          subjectId: quizSubjectId,
         },
         // Include relations if needed for the result shape or debugging
         // include: {
@@ -395,7 +415,7 @@ export const resolvers = {
         //   explanations: true,
         // },
       });
-      // --- END OF FINAL CODE UPDATE ---
+      
 
       if (availableQuestions.length === 0) {
         throw new Error(
@@ -412,8 +432,10 @@ export const resolvers = {
       const quiz = await prisma.quiz.create({
         data: {
           duration,
-          topicId: topicId, // Pass the selected topicId to the Quiz record
-          subjectId: topic.subjectId, // Pass the corresponding subjectId
+          subjectId: quizSubjectId, // Pass the corresponding subjectId
+          topics: {
+            connect: topicIds.map(id => ({ id })) // Use connect with an array of objects { id: topicId }
+          },
           quizOwnedBy: dbUser.id,
           numberOfQuestions: selectedQuestions.length,
           yearStart,
@@ -422,22 +444,33 @@ export const resolvers = {
         },
       });
 
-      // Connect questions to quiz in a separate step
-      await prisma.quiz.update({
-        where: { id: quiz.id },
-        data: {
-          questions: {
-            connect: selectedQuestions.map((q) => ({ id: q.id })),
-          },
-        },
-      });
+      // // Connect questions to quiz in a separate step
+      // await prisma.quiz.update({
+      //   where: { id: quiz.id },
+      //   data: {
+      //     questions: {
+      //       connect: selectedQuestions.map((q) => ({ id: q.id })),
+      //     },
+      //   },
+      // });
+      // Connect questions to quiz (This logic remains similar)
+      if (selectedQuestions.length > 0) { // Add check in case no questions were selected
+        await prisma.quiz.update({
+            where: { id: quiz.id },
+            data: {
+                questions: {
+                    connect: selectedQuestions.map((q) => ({ id: q.id })),
+                },
+            },
+        });
+     }
 
       // Fetch the complete quiz with all relations
       const completeQuiz = await prisma.quiz.findUnique({
         where: { id: quiz.id },
         include: {
           subject: true,
-          topic: true,
+          topics: true,
           owner: {
             select: {
               id: true,
@@ -449,11 +482,13 @@ export const resolvers = {
               explanations: true,
             },
           },
+          // Include the new assignments relation if needed here
+          quiz_assignments: true, // Check if this include name matches your relation name
         },
       });
 
       if (!completeQuiz) {
-        throw new Error("Failed to create quiz");
+        throw new Error("Failed to create or fetch complete quiz after connection");
       }
 
       return completeQuiz;
@@ -483,7 +518,7 @@ export const resolvers = {
           quizzes: {
             include: {
               subject: true,
-              topic: true,
+              topics: true,
             },
           },
           users: true,
@@ -527,7 +562,7 @@ export const resolvers = {
           quizzes: {
             include: {
               subject: true,
-              topic: true,
+              topics: true,
             },
           },
           users: true,

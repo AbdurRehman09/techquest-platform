@@ -17,7 +17,7 @@ const VERIFY_AND_CLAIM_QUIZ = gql`
         subject {
           name
         }
-        topic {
+        topics {
           name
         }
       }

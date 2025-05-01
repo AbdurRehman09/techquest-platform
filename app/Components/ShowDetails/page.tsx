@@ -29,9 +29,9 @@ interface QuizDetails {
   numberOfQuestions: number;
   yearStart: number;
   yearEnd: number;
-  topic: {
+  topics: {
     name: string;
-  };
+  }[];
   subject: {
     name: string;
   };
@@ -49,7 +49,7 @@ const GET_QUIZ_DETAILS = gql`
       numberOfQuestions
       yearStart
       yearEnd
-      topic {
+      topics {
         name
       }
       subject {
@@ -154,7 +154,7 @@ const ShowDetails: React.FC = () => {
         <div className="max-w-4xl mx-auto">
           {/* Quiz Overview */}
           <Card 
-            title={`Quiz Details: ${quiz?.topic.name}`} 
+            title={`Quiz Details: ${quiz?.topics.map(topic => topic.name).join(', ')}`} 
             extra={
               <div>
                 <Tag color="blue" className="mr-2">{quiz?.subject.name}</Tag>
