@@ -356,22 +356,46 @@ export const resolvers = {
       if (!topic) throw new Error("Topic not found");
 
       // Get questions based on criteria
+      // const availableQuestions = await prisma.question.findMany({
+      //   where: {
+      //     subject: {
+      //       topics: {
+      //         some: {
+      //           id: topicId,
+      //         },
+      //       },
+      //     },
+      //     difficulty,
+      //     year: {
+      //       gte: yearStart,
+      //       lte: yearEnd,
+      //     },
+      //   },
+      // });
+      // --- FINAL CODE UPDATE HERE ---
       const availableQuestions = await prisma.question.findMany({
         where: {
-          subject: {
-            topics: {
-              some: {
-                id: topicId,
-              },
-            },
-          },
+          // **** USE THE NEW CORRECT FILTER ****
+          topicId: topicId, // <--- Filter directly by the topicId on the Question model
+
+          // Keep your other filters:
           difficulty,
           year: {
             gte: yearStart,
             lte: yearEnd,
           },
+          // You can optionally add subjectId here as well, but filtering by topicId
+          // which belongs to a subject is typically sufficient and implied.
+          // subjectId: topic.subjectId, // Optional additional filter
         },
+        // Include relations if needed for the result shape or debugging
+        // include: {
+        //   subject: true,
+        //   topic: true,
+        //   explanations: true,
+        // },
       });
+      // --- END OF FINAL CODE UPDATE ---
 
       if (availableQuestions.length === 0) {
         throw new Error(
@@ -388,8 +412,8 @@ export const resolvers = {
       const quiz = await prisma.quiz.create({
         data: {
           duration,
-          topicId,
-          subjectId: topic.subjectId,
+          topicId: topicId, // Pass the selected topicId to the Quiz record
+          subjectId: topic.subjectId, // Pass the corresponding subjectId
           quizOwnedBy: dbUser.id,
           numberOfQuestions: selectedQuestions.length,
           yearStart,

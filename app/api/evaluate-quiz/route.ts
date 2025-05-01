@@ -4,7 +4,7 @@ import nodemailer from "nodemailer";
 import { PrismaClient } from "@prisma/client";
 
 // Initialize Gemini API
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_CLIENT_ID || "");
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
 // Email configuration
 const transporter = nodemailer.createTransport({
