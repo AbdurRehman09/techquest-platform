@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Layout, Typography, Button, Tabs } from 'antd';
 import QuizzesList from '../Components/QuizzesList/page';
 import AssignQuizModal from '../Components/AssignQuizModal/page';
+import CustomQuestions from '../Components/CustomQuestions/page';
 import { gql, useQuery } from '@apollo/client';
 import { useSession } from 'next-auth/react';
 const { Content } = Layout;
@@ -57,7 +58,7 @@ const TeacherDashboard: React.FC = () => {
 
         {activeTab === 'myQuizzes' && <QuizzesList showAssignButton={true} type="REGULAR"
           userId={userData.getUserByEmail.id} />}
-        {activeTab === 'customQuestions' && <p>Custom questions content goes here</p>}
+        {activeTab === 'customQuestions' && <CustomQuestions />}
 
         <AssignQuizModal
           visible={isAssignModalVisible}

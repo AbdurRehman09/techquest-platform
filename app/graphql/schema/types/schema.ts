@@ -43,6 +43,9 @@ export const typeDefs = gql`
     description: String!
     subject: Subject!
     author: User!
+    topics: [Topic!]!
+    createdAt: DateTime!
+    updatedAt: DateTime!
   }
 
   type QuestionExplanation {
@@ -108,6 +111,12 @@ export const typeDefs = gql`
     name: String!
   }
 
+  input CreateCustomQuestionInput {
+    description: String!
+    subjectId: Int!
+    topicIds: [Int!]
+  }
+
   type Query {
     subjects: [Subject!]!
     topics(subjectId: Int!): [Topic!]!
@@ -137,5 +146,6 @@ export const typeDefs = gql`
       rubricType: String!
       customRubric: String
     ): Boolean!
+    createCustomQuestion(input: CreateCustomQuestionInput!): CustomQuestion!
   }
 `;

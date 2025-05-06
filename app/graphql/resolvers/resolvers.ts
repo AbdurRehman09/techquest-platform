@@ -8,6 +8,7 @@ interface Context {
   prisma: PrismaClient;
   userId?: number;
   session?: any;
+  user?: any;
 }
 
 // Add all missing interfaces
@@ -29,13 +30,20 @@ interface QuestionExplanationsArgs {
 }
 
 interface CreateQuizInput {
-  topicIds: number[];
-  difficulty: string;
+  name: string;
   duration: number;
-  numberOfQuestions: number;
+  quizSubjectId: number;
+  topicIds: number[];
   yearStart: number;
   yearEnd: number;
-  name: string;
+  numberOfQuestions: number;
+  difficulty: string;
+}
+
+interface CreateCustomQuestionInput {
+  description: string;
+  subjectId: number;
+  topicIds?: number[];
 }
 
 interface QuizCreateData extends Prisma.QuizCreateInput {
@@ -133,6 +141,7 @@ export const resolvers = {
         include: {
           subject: true,
           author: true,
+          topics: true,
         },
       });
     },
@@ -354,14 +363,6 @@ export const resolvers = {
         throw new Error("Please select at least one topic.");
       }
 
-      // const topic = await prisma.topic.findUnique({
-      //   where: { id: topicId },
-      //   select: { subjectId: true },
-      // });
-      //Replace above code with this instead
-      // Fetch the topics to verify they exist and get their subjectId(s)
-      // This is important if you need to link the quiz to a single subject
-      // or validate that topics are from the correct subject(s).
       const selectedTopics = await prisma.topic.findMany({
         where: {
             id: { in: topicIds }
@@ -369,38 +370,29 @@ export const resolvers = {
         select: {
             id: true,
             subjectId: true,
-            name: true // Fetch name for potential error messages
+            name: true
         }
       });
 
-      // if (!topic) throw new Error("Topic not found");  //Remove this, probably not needed
-      // Check if all provided topicIds were valid
       if (selectedTopics.length !== topicIds.length) {
         const foundIds = selectedTopics.map(t => t.id);
         const notFoundIds = topicIds.filter(id => !foundIds.includes(id));
         throw new Error(`One or more selected topics were not found: ${notFoundIds.join(', ')}`);
       }
 
-      // Example: Verify all selected topics belong to the same subject If quizzes are intended to be subject-specific.
       const firstSubjectId = selectedTopics[0].subjectId;
       const allSameSubject = selectedTopics.every(topic => topic.subjectId === firstSubjectId);
 
       if (!allSameSubject) {
-          // You might need more sophisticated logic or a different schema if quizzes can legitimately span multiple subjects.
-          throw new Error("All selected topics must belong to the same subject.");
+        throw new Error("All selected topics must belong to the same subject.");
       }
-      const quizSubjectId = firstSubjectId; // This will be the subjectId for the quiz
-      // --- END OF VALIDATION & DERIVE SUBJECT ID ---
+      const quizSubjectId = firstSubjectId;
 
-
-      // Get questions based on criteria from ALL selected topics
       const availableQuestions = await prisma.question.findMany({
         where: {
-          // New filter using the 'in' operator for the array of topicIds for questions whose topicId is IN the array of selected topicIds
           topicId: {
             in: topicIds
           },
-
           difficulty,
           year: {
             gte: yearStart,
@@ -408,14 +400,7 @@ export const resolvers = {
           },
           subjectId: quizSubjectId,
         },
-        // Include relations if needed for the result shape or debugging
-        // include: {
-        //   subject: true,
-        //   topic: true,
-        //   explanations: true,
-        // },
       });
-      
 
       if (availableQuestions.length === 0) {
         throw new Error(
@@ -423,18 +408,16 @@ export const resolvers = {
         );
       }
 
-      // Randomly select questions
       const selectedQuestions = availableQuestions
         .sort(() => Math.random() - 0.5)
         .slice(0, Math.min(numberOfQuestions, availableQuestions.length));
 
-      // Create quiz with actual database user ID and title from input
       const quiz = await prisma.quiz.create({
         data: {
           duration,
-          subjectId: quizSubjectId, // Pass the corresponding subjectId
+          subjectId: quizSubjectId,
           topics: {
-            connect: topicIds.map(id => ({ id })) // Use connect with an array of objects { id: topicId }
+            connect: topicIds.map(id => ({ id }))
           },
           quizOwnedBy: dbUser.id,
           numberOfQuestions: selectedQuestions.length,
@@ -442,30 +425,35 @@ export const resolvers = {
           yearEnd,
           title: name,
         },
+        include: {
+          subject: true,
+          topics: true,
+          owner: {
+            select: {
+              id: true,
+              role: true,
+            },
+          },
+          questions: {
+            include: {
+              explanations: true,
+            },
+          },
+          quiz_assignments: true,
+        },
       });
 
-      // // Connect questions to quiz in a separate step
-      // await prisma.quiz.update({
-      //   where: { id: quiz.id },
-      //   data: {
-      //     questions: {
-      //       connect: selectedQuestions.map((q) => ({ id: q.id })),
-      //     },
-      //   },
-      // });
-      // Connect questions to quiz (This logic remains similar)
-      if (selectedQuestions.length > 0) { // Add check in case no questions were selected
+      if (selectedQuestions.length > 0) {
         await prisma.quiz.update({
-            where: { id: quiz.id },
-            data: {
-                questions: {
-                    connect: selectedQuestions.map((q) => ({ id: q.id })),
-                },
+          where: { id: quiz.id },
+          data: {
+            questions: {
+              connect: selectedQuestions.map((q) => ({ id: q.id })),
             },
+          },
         });
-     }
+      }
 
-      // Fetch the complete quiz with all relations
       const completeQuiz = await prisma.quiz.findUnique({
         where: { id: quiz.id },
         include: {
@@ -482,8 +470,7 @@ export const resolvers = {
               explanations: true,
             },
           },
-          // Include the new assignments relation if needed here
-          quiz_assignments: true, // Check if this include name matches your relation name
+          quiz_assignments: true,
         },
       });
 
@@ -511,7 +498,6 @@ export const resolvers = {
         throw new Error("User not found");
       }
 
-      // Check if assignment exists
       const assignment = await prisma.quiz_assignments.findFirst({
         where: { shareableLink },
         include: {
@@ -529,7 +515,6 @@ export const resolvers = {
         throw new Error("Invalid quiz link");
       }
 
-      // Check if user has already been assigned this quiz
       const existingAssignment = await prisma.quiz_assignments.findFirst({
         where: {
           id: assignment.id,
@@ -545,7 +530,6 @@ export const resolvers = {
         throw new Error("You have already been assigned this quiz");
       }
 
-      // Update quiz type and connect student
       await prisma.quiz.update({
         where: { id: assignment.quizzes.id },
         data: { type: "ASSIGNED" },
@@ -792,6 +776,34 @@ export const resolvers = {
       });
 
       return true;
+    },
+
+    createCustomQuestion: async (
+      _parent: any,
+      { input }: { input: CreateCustomQuestionInput },
+      { prisma, userId, session }: Context
+    ) => {
+      if (!session?.user?.email) {
+        throw new Error("Not authenticated");
+      }
+
+      const customQuestion = await prisma.customQuestion.create({
+        data: {
+          description: input.description,
+          subjectId: input.subjectId,
+          authorId: parseInt(session.user.id),
+          topics: {
+            connect: input.topicIds?.map((id: number) => ({ id })) || []
+          }
+        },
+        include: {
+          subject: true,
+          author: true,
+          topics: true
+        }
+      });
+
+      return customQuestion;
     },
   },
 };

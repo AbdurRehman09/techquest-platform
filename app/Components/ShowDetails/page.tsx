@@ -154,7 +154,7 @@ const ShowDetails: React.FC = () => {
         <div className="max-w-4xl mx-auto">
           {/* Quiz Overview */}
           <Card 
-            title={`Quiz Details: ${quiz?.topics.map(topic => topic.name).join(', ')}`} 
+            title={`Quiz Details: ${quiz?.topics?.length ? quiz.topics.map(topic => topic.name).join(', ') : 'No topics'}`} 
             extra={
               <div>
                 <Tag color="blue" className="mr-2">{quiz?.subject.name}</Tag>

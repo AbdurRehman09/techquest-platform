@@ -16,12 +16,28 @@ const server = new ApolloServer({
 const handler = startServerAndCreateNextHandler(server, {
   context: async (req, res) => {
     const session = await getServerSession(authOptions);
+    
+    if (!session?.user?.email) {
+      return {
+        req,
+        res,
+        prisma,
+        session: null,
+        userId: undefined
+      };
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email }
+    });
+
     return {
       req,
       res,
       prisma,
       session,
-      userId: session?.user?.id ? parseInt(session.user.id) : undefined
+      userId: user?.id,
+      user
     };
   },
 });

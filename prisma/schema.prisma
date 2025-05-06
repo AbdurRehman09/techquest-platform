@@ -46,6 +46,7 @@ model Topic {
   quiz      Quiz[]   @relation("QuizTopic")
   subject   Subject  @relation(fields: [subjectId], references: [id])
   questions Question[] @relation("TopicQuestions")
+  customQuestions CustomQuestion[] @relation("CustomQuestionTopics")
 
   @@index([subjectId], map: "topics_subjectId_fkey")
   @@map("topics")
@@ -81,12 +82,15 @@ model Quiz {
 }
 
 model CustomQuestion {
-  id          Int     @id @default(autoincrement())
+  id          Int      @id @default(autoincrement())
   description String
   subjectId   Int
   authorId    Int
-  author      User    @relation(fields: [authorId], references: [id])
-  subject     Subject @relation(fields: [subjectId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  author      User     @relation(fields: [authorId], references: [id])
+  subject     Subject  @relation(fields: [subjectId], references: [id])
+  topics      Topic[]  @relation("CustomQuestionTopics")
 
   @@index([authorId], map: "custom_questions_authorId_fkey")
   @@index([subjectId], map: "custom_questions_subjectId_fkey")
