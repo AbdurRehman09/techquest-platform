@@ -68,7 +68,7 @@ export const resolvers = {
   DateTime: DateTimeResolver,
 
   Query: {
-    subjects: async (_: any, __: any, context: Context) => {
+    subjects: async (_: any, __: any, { prisma }: Context) => {
       return await prisma.subject.findMany({
         include: {
           topics: true,
@@ -187,6 +187,7 @@ export const resolvers = {
           type: true,
           start_time: true,
           finished_at: true,
+          quizOwnedBy: true,
           questions: {
             select: {
               id: true,
@@ -804,6 +805,110 @@ export const resolvers = {
       });
 
       return customQuestion;
+    },
+
+    updateQuizQuestions: async (
+      _parent: any,
+      { quizId, questionIds }: { quizId: number; questionIds: number[] },
+      { prisma, session }: Context
+    ) => {
+      if (!session?.user?.email) {
+        throw new Error("Not authenticated");
+      }
+
+      // Get the quiz and verify ownership
+      const quiz = await prisma.quiz.findUnique({
+        where: { id: quizId },
+        include: { owner: true }
+      });
+
+      if (!quiz) {
+        throw new Error("Quiz not found");
+      }
+
+      if (quiz.owner.email !== session.user.email) {
+        throw new Error("You can only update your own quizzes");
+      }
+
+      // Update the quiz questions
+      const updatedQuiz = await prisma.quiz.update({
+        where: { id: quizId },
+        data: {
+          questions: {
+            set: questionIds.map(id => ({ id }))
+          },
+          numberOfQuestions: questionIds.length
+        },
+        include: {
+          questions: {
+            include: {
+              topic: true
+            }
+          },
+          topics: true,
+          subject: true,
+          owner: {
+            select: {
+              id: true,
+              role: true
+            }
+          }
+        }
+      });
+
+      return updatedQuiz;
+    },
+
+    deleteQuestionFromQuiz: async (
+      _parent: any,
+      { quizId, questionId }: { quizId: number; questionId: number },
+      { prisma, session }: Context
+    ) => {
+      if (!session?.user?.email) {
+        throw new Error("Not authenticated");
+      }
+
+      // Get the quiz and verify ownership
+      const quiz = await prisma.quiz.findUnique({
+        where: { id: quizId },
+        include: { owner: true }
+      });
+
+      if (!quiz) {
+        throw new Error("Quiz not found");
+      }
+
+      if (quiz.owner.email !== session.user.email) {
+        throw new Error("You can only update your own quizzes");
+      }
+
+      // Update the quiz questions by removing the specified question
+      const updatedQuiz = await prisma.quiz.update({
+        where: { id: quizId },
+        data: {
+          questions: {
+            disconnect: { id: questionId }
+          },
+          numberOfQuestions: quiz.numberOfQuestions - 1 // Adjust the count
+        },
+        include: {
+          questions: {
+            include: {
+              topic: true
+            }
+          },
+          topics: true,
+          subject: true,
+          owner: {
+            select: {
+              id: true,
+              role: true
+            }
+          }
+        }
+      });
+
+      return updatedQuiz;
     },
   },
 };

@@ -147,5 +147,7 @@ export const typeDefs = gql`
       customRubric: String
     ): Boolean!
     createCustomQuestion(input: CreateCustomQuestionInput!): CustomQuestion!
+    updateQuizQuestions(quizId: Int!, questionIds: [Int!]!): Quiz!
+    deleteQuestionFromQuiz(quizId: Int!, questionId: Int!): Quiz!
   }
 `;

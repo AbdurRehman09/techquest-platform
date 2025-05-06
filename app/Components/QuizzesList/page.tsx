@@ -173,6 +173,10 @@ const QuizzesList: React.FC<QuizzesListProps> = ({
     router.push(`/Components/ShowDetails?quizId=${quizId}`);
   };
 
+  const handleEditQuiz = (quizId: number) => {
+    router.push(`/Components/EditQuiz?quizId=${quizId}`);
+  };
+
   const handleAssignQuiz = (quizId: number) => {
     setSelectedQuizId(quizId);
     setAssignModalVisible(true);
@@ -252,7 +256,8 @@ const QuizzesList: React.FC<QuizzesListProps> = ({
       : data?.userQuizzes || [];
 
   // Determine user role from data or session
-  const userRole = data?.user?.role || session?.user?.role;
+  const userRole =  session?.user?.role;
+  console.log('User Role:', userRole);
 
   const showAssignButtonForQuiz = showAssignButton && userRole === "TEACHER";
 
@@ -270,6 +275,7 @@ const QuizzesList: React.FC<QuizzesListProps> = ({
       )}
 
       {quizzes.map((quiz: Quiz) => (
+
         <Card
           key={quiz.id}
           className="mb-4"
@@ -277,9 +283,8 @@ const QuizzesList: React.FC<QuizzesListProps> = ({
         >
           <Row justify="space-between" align="middle">
             <Col>
-              <Title level={5} className="m-0 flex items-center">
+              <Title level={5} className="m-0">
                 {quiz.title}
-                <EditOutlined className="ml-2 text-gray-400" />
               </Title>
             </Col>
             <Col>
@@ -288,10 +293,21 @@ const QuizzesList: React.FC<QuizzesListProps> = ({
                 icon={<EyeOutlined />}
                 onClick={() => handleShowDetails(quiz.id)}
                 className="mr-2"
+                disabled={type === "ASSIGNED" && userRole === "STUDENT" && !quiz.finished_at}
               >
                 Show Details
               </Button>
-              {userRole !== "TEACHER" && (
+              {(userRole === "TEACHER" || quiz.quizOwnedBy === parseInt(session?.user?.id || "0")) && (
+                <Button
+                  style={{ backgroundColor: "#c5e4f0" }}
+                  icon={<EditOutlined />}
+                  onClick={() => handleEditQuiz(quiz.id)}
+                  className="mr-2"
+                >
+                  Edit Quiz
+                </Button>
+              )}
+              {userRole === "STUDENT" && (
                 <Tooltip
                   title={
                     quiz.start_time && quiz.finished_at
@@ -331,6 +347,16 @@ const QuizzesList: React.FC<QuizzesListProps> = ({
                   }}
                 />
               )}
+              {(() => {
+                console.log('Set Rubric Button Values:', {
+                  userId,
+                  userIdType: typeof userId,
+                  quizOwnedBy: quiz?.quizOwnedBy,
+                  quizOwnedByType: typeof quiz?.quizOwnedBy,
+                  isMatch: userId === quiz.quizOwnedBy
+                });
+                return null;
+              })()}
               {userId === quiz.quizOwnedBy && (
                 <Button
                   style={{ backgroundColor: "#c5e4f0" }}

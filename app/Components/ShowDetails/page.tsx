@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Layout, Typography, Card, Row, Col, Tag, Descriptions, Button, message } from 'antd';
 import { gql, useQuery, useMutation } from '@apollo/client';
 import { useSearchParams } from 'next/navigation';
-import { CodeOutlined } from '@ant-design/icons';
+import { CodeOutlined, EditOutlined } from '@ant-design/icons';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 
@@ -23,19 +23,22 @@ interface Question {
   explanations: QuestionExplanation[];
 }
 
+interface Topic {
+  name: string;
+}
+
 interface QuizDetails {
   id: number;
   duration: number;
   numberOfQuestions: number;
   yearStart: number;
   yearEnd: number;
-  topics: {
-    name: string;
-  }[];
+  topics: Topic[];
   subject: {
     name: string;
   };
   questions: Question[];
+  quizOwnedBy: number;
   start_time: Date | null;
   finished_at: Date | null;
   type: 'REGULAR' | 'ASSIGNED';
@@ -64,6 +67,7 @@ const GET_QUIZ_DETAILS = gql`
           feedback
         }
       }
+      quizOwnedBy
       start_time
       finished_at
       type
@@ -84,28 +88,39 @@ const RESET_FINISHED_AT = gql`
 
 const ShowDetails: React.FC = () => {
   const router = useRouter();
-  const { data: session } = useSession();
-  
-  // Extract quizId from URL
   const searchParams = useSearchParams();
-  const quizId = Number(searchParams?.get('quizId') || '0');
+  const { data: session } = useSession();
+  const quizId = searchParams?.get('quizId');
 
-  const [quiz, setQuiz] = useState<QuizDetails | null>(null);
-  const [resetFinishedAt] = useMutation(RESET_FINISHED_AT);
+  // Early return if quizId is not available
+  if (!quizId) {
+    return <div className="flex justify-center items-center h-screen">Loading...</div>;
+  }
 
+ const [resetFinishedAt] = useMutation(RESET_FINISHED_AT);
   const { loading, error, data } = useQuery(GET_QUIZ_DETAILS, {
-    variables: { quizId },
-    onCompleted: (data) => {
-      setQuiz(data.quizDetails);
-    }
+    variables: { quizId: parseInt(quizId) },
+    fetchPolicy: 'network-only' // Ensure fresh data
   });
 
-  if (loading) return <div>Loading...</div>;
-  if (error) return <div>Error: {error.message}</div>;
-  if (!data || !data.quizDetails) return <div>No quiz found</div>;
+  // Show loading state
+  if (loading) {
+    return <div className="flex justify-center items-center h-screen">Loading quiz details...</div>;
+  }
 
-  // Determine user role
-  const userRole = session?.user?.role;
+  // Show error state
+  if (error) {
+    return <div className="flex justify-center items-center h-screen text-red-500">Error: {error.message}</div>;
+  }
+
+  const quiz = data?.quizDetails;
+
+  // Show not found state
+  if (!quiz) {
+    return <div className="flex justify-center items-center h-screen">Quiz not found</div>;
+  }
+
+ 
 
   const handleStartQuiz = async () => {
     if (!quiz) return;
@@ -135,6 +150,10 @@ const ShowDetails: React.FC = () => {
     router.push(`/compiler?quizId=${quiz.id}`);
   };
 
+  const handleEditQuiz = () => {
+    router.push(`/Components/EditQuiz?quizId=${quiz?.id}`);
+  };
+
   const getQuizButtonText = () => {
     if (quiz?.start_time === null) return 'Start Quiz';
     if (quiz?.finished_at === null) return 'Resume Quiz';
@@ -151,14 +170,39 @@ const ShowDetails: React.FC = () => {
   return (
     <Layout className="min-h-screen bg-[#f0f2f5]">
       <Content className="p-6">
-        <div className="max-w-4xl mx-auto">
+        {(() => {
+          console.log('ShowDetails Values:', {
+            sessionUserId: session?.user?.id,
+            sessionUserIdType: typeof session?.user?.id,
+            parsedSessionId: session?.user?.id ? parseInt(session.user.id) : undefined,
+            quizOwnedBy: quiz?.quizOwnedBy,
+            quizOwnedByType: typeof quiz?.quizOwnedBy,
+            isMatch: quiz?.quizOwnedBy === (session?.user?.id ? parseInt(session.user.id) : undefined)
+          });
+          return null;
+        })()}
+        <div className="max-w-6xl mx-auto">
           {/* Quiz Overview */}
           <Card 
-            title={`Quiz Details: ${quiz?.topics?.length ? quiz.topics.map(topic => topic.name).join(', ') : 'No topics'}`} 
+            title={
+              <div className="flex justify-between items-center">
+                <span>{`Quiz Details: ${quiz?.topics?.length ? quiz.topics.map((topic: Topic) => topic.name).join(', ') : 'No topics'}`}</span>
+                <Tag color="blue" className="ml-4">{quiz?.subject.name}</Tag>
+              </div>
+            }
             extra={
-              <div>
-                <Tag color="blue" className="mr-2">{quiz?.subject.name}</Tag>
-                {userRole !== 'TEACHER' && (
+              <div className="flex gap-3 items-center">
+                {quiz?.quizOwnedBy === parseInt(session?.user?.id || "0") && (
+                  <Button
+                    className="bg-gray-100"
+                    icon={<EditOutlined />}
+                    onClick={handleEditQuiz}
+                    size="large"
+                  >
+                    Edit Quiz
+                  </Button>
+                )}
+                {session?.user?.role === "STUDENT" && (
                   <Button
                     className="bg-gray-100"
                     icon={<CodeOutlined />}
@@ -168,26 +212,29 @@ const ShowDetails: React.FC = () => {
                       quiz.start_time !== null && 
                       quiz.finished_at !== null
                     }
+                    size="large"
                   >
                     {getQuizButtonText()}
                   </Button>
                 )}
               </div>
             }
-            className="mb-6"
+            className="mb-6 shadow-md"
           >
-            <Descriptions bordered>
-              <Descriptions.Item label="Duration">
+            <Descriptions bordered column={2}>
+              <Descriptions.Item label="Duration" labelStyle={{ fontWeight: 'bold' }}>
                 {quiz?.duration} mins
               </Descriptions.Item>
-              <Descriptions.Item label="Questions">{quiz?.numberOfQuestions}</Descriptions.Item>
+              <Descriptions.Item label="Questions" labelStyle={{ fontWeight: 'bold' }}>
+                {quiz?.numberOfQuestions}
+              </Descriptions.Item>
             </Descriptions>
           </Card>
 
           {/* Questions Grid */}
-          <Row gutter={[16, 16]}>
+          <Row gutter={[24, 24]}>
             {quiz?.questions.map((question: Question, index: number) => (
-              <Col key={question.id} xs={24} sm={12} md={8}>
+              <Col key={question.id} xs={24} md={12}>
                 <Card
                   title={`Question ${index + 1}`}
                   extra={
@@ -195,13 +242,14 @@ const ShowDetails: React.FC = () => {
                       {question.difficulty}
                     </Tag>
                   }
+                  className="shadow-sm"
                 >
-                  <Paragraph>{question.description}</Paragraph>
+                  <Paragraph className="text-base">{question.description}</Paragraph>
                   
                   {question.explanations.length > 0 && (
-                    <Card type="inner" title="Explanation">
+                    <Card type="inner" title="Explanation" className="mt-4">
                       {question.explanations.map((explanation: QuestionExplanation) => (
-                        <Paragraph key={explanation.id}>
+                        <Paragraph key={explanation.id} className="text-base">
                           {explanation.feedback}
                         </Paragraph>
                       ))}
